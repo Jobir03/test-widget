@@ -6,21 +6,26 @@
     <title>Findecor Chat Widget</title>
   </head>
   <body>
+    <h1>Findecor Chat Widget Demo</h1>
+
+    <!-- Widget script -->
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Keyin initni chaqirishni biroz kechiktiramiz -->
-    <!-- <script>
+    <!-- Initialize widget -->
+    <script>
       window.addEventListener("load", () => {
         const checkWidget = setInterval(() => {
           if (window.FindecorChatWidget) {
             window.FindecorChatWidget.init({
-              themeColor: "#007AFF",
-              apiBase: "https://mock.findecor.io",
+              widgetKey: "LohS5tlsUAWW50hO",
+              apiBase: "https://admin-backend.findecor.io",
+              socketUrl: "wss://admin-backend.findecor.io",
             });
+            console.log("✅ Widget initialized successfully!");
             clearInterval(checkWidget);
           }
         }, 100);
-      }); -->
+      });
     </script>
   </body>
 </html>
