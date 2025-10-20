@@ -4,9 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Findecor Chat Widget</title>
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      iframe {
+        flex: 1;
+        width: 100%;
+        border: none;
+      }
+    </style>
   </head>
   <body>
-    <h1>Findecor Chat Widget Demo</h1>
+    <iframe
+      id="productFrame"
+      src="https://www.sag.uz/uz/"
+      title="Rugs.com"
+    ></iframe>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.addEventListener("load", () => {
+        const checkWidget = setInterval(() => {
+          if (window.FindecorChatWidget) {
+            window.FindecorChatWidget.init({
+              widgetKey: "LohS5tlsUAWW50hO",
+              apiBase: "https://admin-backend.findecor.io",
+              socketUrl: "wss://admin-backend.findecor.io",
+            });
+            console.log("✅ Widget initialized successfully!");
+            clearInterval(checkWidget);
+          }
+        }, 100);
+      });
+    </script>
   </body>
 </html>

@@ -121,6 +121,21 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       date.getMonth() + 1
     ).padStart(2, "0")}/${date.getFullYear()}`;
 
+  const handleProductRedirect = (url: string) => {
+    const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
+    if (iframe) {
+      iframe.src = url;
+    }
+  };
+
+  const product = {
+    id: 1,
+    name: "Anatolian Silk Rug",
+    image: "https://www.sagexpress.uz/media/images/da82_kFC0eom.jpg",
+    price: "$499",
+    url: "https://www.sag.uz/uz/product/anatolian-silk_1329",
+  };
+
   return (
     <>
       <button
@@ -272,6 +287,43 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 </span>
               </div>
             )}
+            <div
+              className="fcw fcw-bubble bot"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                padding: "12px",
+              }}
+            >
+              <img
+                src={product.image}
+                alt={product.name}
+                style={{
+                  borderRadius: "8px",
+                  width: "100%",
+                  height: "200px",
+                  objectFit: "cover",
+                }}
+              />
+              <strong>{product.name}</strong>
+              <span style={{ color: "#007AFF", fontWeight: "bold" }}>
+                {product.price}
+              </span>
+              <button
+                onClick={() => handleProductRedirect(product.url)}
+                style={{
+                  background: themeColor || "#007AFF",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                }}
+              >
+                View Product
+              </button>
+            </div>
           </div>
           <div className="fcw fcw-quick-replies">
             <button className="schedule-visit">
