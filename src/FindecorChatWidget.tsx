@@ -341,7 +341,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               Schedule Visit
             </button>
             <div className="fcw-chips-container">
-              {["Show me laptops", "I need a phone", "What's on sale?"].map(
+              {["Show me rugs", "I need a carpet", "What's on sale?"].map(
                 (label) => (
                   <button
                     key={label}
