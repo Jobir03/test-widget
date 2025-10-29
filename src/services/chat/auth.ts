@@ -10,6 +10,7 @@ export interface AuthResponse {
 
 const createAuthService = () => {
   let widgetKey: string | null = null;
+  let isAuthenticating = false;
   const tokenListeners = new Set<(token: string | null) => void>();
   const baseUrlListeners = new Set<(baseUrl: string) => void>();
 
@@ -49,6 +50,30 @@ const createAuthService = () => {
 
   // Authenticate with widget key
   const authenticate = async (key: string): Promise<AuthResponse> => {
+    // Prevent duplicate authentication calls
+    if (isAuthenticating) {
+      // Wait for the current authentication to complete
+      return new Promise((resolve, reject) => {
+        const checkAuth = () => {
+          if (!isAuthenticating) {
+            const storedToken = getStoredToken();
+            if (storedToken) {
+              resolve({
+                access_token: storedToken,
+                refresh_token: localStorage.getItem(REFRESH_TOKEN_KEY) || "",
+              });
+            } else {
+              reject(new Error("Authentication failed"));
+            }
+          } else {
+            setTimeout(checkAuth, 100);
+          }
+        };
+        checkAuth();
+      });
+    }
+
+    isAuthenticating = true;
     try {
       setWidgetKey(key);
       const url = `${API_BASE}/widget-auth/authenticate`;
@@ -74,6 +99,8 @@ const createAuthService = () => {
     } catch (error) {
       console.error("Authentication error:", error);
       throw error;
+    } finally {
+      isAuthenticating = false;
     }
   };
 

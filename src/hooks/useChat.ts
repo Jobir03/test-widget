@@ -24,6 +24,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     from: m.isAdmin ? "bot" : "user",
     text: m.text,
     images: m.images ?? [],
+    products: m.products ?? [],
     timestamp: new Date(m.createdAt),
     user: m.widgetUser
       ? {
@@ -74,14 +75,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   /** Initialize socket + fetch history */
   useEffect(() => {
     if (!widgetKey) return;
+
+    // Set auth configuration only once
     authService.setBaseUrl(apiBase);
     authService.setWidgetKey(widgetKey);
+
     chatService.current = createChatService(widgetKey);
     fetchMessages();
 
     if (socketUrl) {
       chatService.current.connectSocket(socketUrl, onNewMessage).catch(() => {
-        setError("Aloqa o‘rnatishda xatolik");
+        setError("Aloqa o'rnatishda xatolik");
       });
     }
 
@@ -105,6 +109,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
           from: "bot",
           text: "Sorry, something went wrong. Please try again.",
           images: [],
+          products: [],
           timestamp: new Date(),
         },
       ]);

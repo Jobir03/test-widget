@@ -43,6 +43,7 @@ export const createChatService = (widgetKey: string) => {
     from: m.isAdmin ? "bot" : "user",
     text: m.text,
     images: m.images ?? [],
+    products: m.products ?? [],
     timestamp: new Date(m.createdAt),
     user: m.widgetUser
       ? {
@@ -276,6 +277,7 @@ export const createChatService = (widgetKey: string) => {
           text: text.trim(),
           images: imageUrl ? [imageUrl] : [],
           timestamp: new Date(),
+          products: [],
         };
 
         resolve(msg);

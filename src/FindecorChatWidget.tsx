@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useChat } from "./hooks/useChat";
 import { createApiClient, type ApiClient } from "./services/api/apiClient";
+import { ProductRecommendations } from "./components/ProductRecommendations/ProductRecommendations";
+import ScheduleVisitForm from "./components/ScheduleVisitForm/ScheduleVisitForm";
 
 interface FindecorChatWidgetProps {
   apiBase: string;
@@ -39,6 +41,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ApiClient | null>(null);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,20 +124,12 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       date.getMonth() + 1
     ).padStart(2, "0")}/${date.getFullYear()}`;
 
-  const handleProductRedirect = (url: string) => {
-    const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
-    if (iframe) {
-      iframe.src = url;
-    }
-  };
-
-  const product = {
-    id: 1,
-    name: "Anatolian Silk Rug",
-    image: "https://www.sagexpress.uz/media/images/da82_kFC0eom.jpg",
-    price: "$499",
-    url: "https://www.sag.uz/uz/product/anatolian-silk_1329",
-  };
+  // const handleProductRedirect = (url: string) => {
+  //   const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
+  //   if (iframe) {
+  //     iframe.src = url;
+  //   }
+  // };
 
   return (
     <>
@@ -232,13 +227,30 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                       </div>
                       {msgs.map((msg) => (
                         <div key={msg.id} className="fcw fcw-message">
-                          <div
-                            className={`fcw fcw-bubble ${
-                              msg.from === "user" ? "user" : "bot"
-                            }`}
-                          >
-                            {msg.text}
-                            {msg.images && msg.images.length > 0 && (
+                          {msg?.text && (
+                            <div
+                              className={`fcw fcw-bubble ${
+                                msg.from === "user" ? "user" : "bot"
+                              }`}
+                            >
+                              {msg.text}
+                              <span className="fcw fcw-time">
+                                {new Date(msg.timestamp).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </span>
+                            </div>
+                          )}
+                          {msg?.images && msg.images.length > 0 && (
+                            <div
+                              className={`fcw fcw-bubble ${
+                                msg.from === "user" ? "user" : "bot"
+                              }`}
+                            >
                               <div
                                 style={{
                                   marginTop: "8px",
@@ -263,16 +275,48 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                                   />
                                 ))}
                               </div>
-                            )}
-                            <span className="fcw fcw-time">
-                              {new Date(msg.timestamp).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
+                              <span className="fcw fcw-time">
+                                {new Date(msg.timestamp).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </span>
+                            </div>
+                          )}
+
+                          {msg?.products && msg.products.length > 0 && (
+                            <div
+                              style={{
+                                width: "100%",
+                              }}
+                              className={`fcw fcw-bubble ${
+                                msg.from === "user" ? "user" : "bot"
+                              }`}
+                            >
+                              <ProductRecommendations
+                                products={msg.products}
+                                onProductClick={(product) => {
+                                  sendMessage(product.name);
+                                }}
+                              />
+
+                              <span className="fcw fcw-time">
+                                {new Date(msg.timestamp).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ))}
+                      {showScheduleForm && <ScheduleVisitForm />}
                     </div>
                   );
                 });
@@ -287,46 +331,12 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 </span>
               </div>
             )}
-            <div
-              className="fcw fcw-bubble bot"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                padding: "12px",
-              }}
-            >
-              <img
-                src={product.image}
-                alt={product.name}
-                style={{
-                  borderRadius: "8px",
-                  width: "100%",
-                  height: "200px",
-                  objectFit: "cover",
-                }}
-              />
-              <strong>{product.name}</strong>
-              <span style={{ color: "#007AFF", fontWeight: "bold" }}>
-                {product.price}
-              </span>
-              <button
-                onClick={() => handleProductRedirect(product.url)}
-                style={{
-                  background: themeColor || "#007AFF",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                }}
-              >
-                View Product
-              </button>
-            </div>
           </div>
           <div className="fcw fcw-quick-replies">
-            <button className="schedule-visit">
+            <button
+              className="schedule-visit"
+              onClick={() => setShowScheduleForm(true)}
+            >
               <Calendar size={16} />
               Schedule Visit
             </button>

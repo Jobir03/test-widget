@@ -14,10 +14,15 @@
 }
 
 .fcw {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Arial, sans-serif;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI" !important;
   color: var(--fcw-color);
   box-sizing: border-box;
+}
+.fcw input,
+.fcw button,
+.fcw select,
+.fcw textarea {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI" !important;
 }
 
 .fcw *,
@@ -60,8 +65,8 @@
   position: fixed;
   bottom: 20px;
   right: 24px;
-  width: 400px;
-  height: 85vh;
+  width: 480px;
+  height: 92vh;
   background: var(--fcw-bg);
   border-radius: 20px;
   box-shadow: var(--fcw-shadow-lg), 0 0 0 1px rgba(0, 0, 0, 0.05);
@@ -168,7 +173,7 @@
   background: #fafbfc;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .fcw-messages::-webkit-scrollbar {
@@ -192,12 +197,13 @@
   display: flex;
   flex-direction: column;
   margin-bottom: 4px;
+  gap: 4px;
 }
 
 .fcw-bubble {
   padding: 8px 12px;
   border-radius: 18px;
-  max-width: 80%;
+  max-width: 85%;
   font-size: 14px;
   line-height: 1.5;
   word-wrap: break-word;
