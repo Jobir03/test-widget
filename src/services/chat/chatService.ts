@@ -11,7 +11,7 @@ const SOCKET_CONFIG = {
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   timeout: 10000,
-  autoConnect: false, // We'll handle connection manually
+  autoConnect: false,
 } as const;
 
 export const createChatService = (widgetKey: string) => {
@@ -58,7 +58,7 @@ export const createChatService = (widgetKey: string) => {
   });
 
   const handleConnect = () => {
-    console.info("✅ Connected:", socket?.id);
+    console.info("✅ Connected");
     reconnectAttempts = 0;
     onConnectionStateChange?.(true);
   };
@@ -67,23 +67,17 @@ export const createChatService = (widgetKey: string) => {
     console.warn("🔌 Disconnected:", reason);
     onConnectionStateChange?.(false);
 
-    // If the disconnect was due to an unauthorized error, try to reconnect
     if (
       reason === "io server disconnect" ||
       reason === "io client disconnect"
     ) {
-      console.log("Attempting to reconnect...");
       setTimeout(connectWithRetry, 1000);
     }
   };
 
   const handleConnectError = async (error: Error) => {
-    console.error("❌ Connection error:", error.message);
-
-    // If unauthorized, try to refresh the token and reconnect
     if (error.message.includes("401") || error.message.includes("403")) {
       try {
-        // Force refresh the token
         const newToken = await getAuthToken(true);
 
         if (socket) {
@@ -91,15 +85,12 @@ export const createChatService = (widgetKey: string) => {
             ...socket.io.opts.extraHeaders,
             Authorization: `Bearer ${newToken}`,
           };
-
-          // Only reconnect if we're not already connected/connecting
           if (!socket.connected && !isConnecting) {
             await connectWithRetry();
           }
         }
-      } catch (refreshError) {
+      } catch (refreshError: unknown) {
         console.error("Failed to refresh token:", refreshError);
-        // If refresh fails, clear tokens and notify
         authService.clearToken();
         onConnectionStateChange?.(false);
       }
@@ -114,10 +105,10 @@ export const createChatService = (widgetKey: string) => {
     socket.on("connect_error", handleConnectError);
     socket.on("connect_timeout", () => console.warn("⌛ Connection timeout"));
     socket.on("reconnect_attempt", (attempt) =>
-      console.log(`♻️ Reconnect attempt ${attempt}`)
+      console.log(`Reconnect attempt ${attempt}`)
     );
     socket.on("reconnect_failed", () =>
-      console.error("❌ Reconnection failed after all attempts")
+      console.error("Reconnection failed after all attempts")
     );
 
     socket.on("newMessage", (data: ServerMessage) => {
@@ -140,25 +131,20 @@ export const createChatService = (widgetKey: string) => {
   const connectWithRetry = async (): Promise<void> => {
     if (!socket || isConnecting) return;
 
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.error("Max reconnection attempts reached");
-      return;
-    }
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
 
     isConnecting = true;
     reconnectAttempts++;
 
     try {
-      const token = await getAuthToken(reconnectAttempts > 1);
+      const token = await getAuthToken(false);
 
       if (socket) {
-        // Update the token in the socket options
         socket.io.opts.extraHeaders = {
           ...socket.io.opts.extraHeaders,
           Authorization: `Bearer ${token}`,
         };
 
-        // Only connect if not already connected
         if (!socket.connected) {
           await new Promise<void>((resolve, reject) => {
             if (!socket) return reject(new Error("Socket not initialized"));
@@ -181,7 +167,6 @@ export const createChatService = (widgetKey: string) => {
     } catch (error) {
       console.error("Connection error:", error);
 
-      // If it's an auth error, clear the token
       if (
         error instanceof Error &&
         (error.message.includes("401") || error.message.includes("403"))
@@ -189,7 +174,6 @@ export const createChatService = (widgetKey: string) => {
         authService.clearToken();
       }
 
-      // Schedule a retry with exponential backoff
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
       console.log(`Retrying connection in ${delay}ms...`);
 
@@ -204,34 +188,35 @@ export const createChatService = (widgetKey: string) => {
   };
 
   const connectSocket = async (url: string, handler: MessageHandler) => {
-    cleanListeners();
+    if (socket) {
+      cleanListeners();
+      if (socket.connected) {
+        socket.disconnect();
+      }
+      socket = null;
+    }
 
     const token = await getAuthToken();
     onMessage = handler;
 
-    // Create socket instance if it doesn't exist
-    if (!socket) {
-      socket = io(`${normalizeUrl(url)}/widget-chat`, {
-        ...SOCKET_CONFIG,
-        extraHeaders: { Authorization: `Bearer ${token}` },
-      });
+    socket = io(`${normalizeUrl(url)}/widget-chat`, {
+      ...SOCKET_CONFIG,
+      extraHeaders: { Authorization: `Bearer ${token}` },
+    });
 
-      attachListeners();
+    attachListeners();
 
-      // React to token changes: update headers and reconnect if needed
-      authService.onTokenChanged(async (newToken) => {
-        if (!socket) return;
-        socket.io.opts.extraHeaders = {
-          ...socket.io.opts.extraHeaders,
-          ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
-        };
-        if (newToken && !socket.connected && !isConnecting) {
-          await connectWithRetry();
-        }
-      });
-    }
+    authService.onTokenChanged(async (newToken) => {
+      if (!socket) return;
+      socket.io.opts.extraHeaders = {
+        ...socket.io.opts.extraHeaders,
+        ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+      };
+      if (newToken && !socket.connected && !isConnecting) {
+        await connectWithRetry();
+      }
+    });
 
-    // Connect with retry logic
     await connectWithRetry();
   };
 
@@ -240,7 +225,6 @@ export const createChatService = (widgetKey: string) => {
 
     cleanListeners();
 
-    // Only disconnect if we're connected
     if (socket.connected) {
       socket.disconnect();
     }
@@ -248,6 +232,36 @@ export const createChatService = (widgetKey: string) => {
     socket = null;
     onMessage = null;
     onConnectionStateChange?.(false);
+  };
+
+  const reconnectSocket = async (
+    url: string,
+    handler?: MessageHandler
+  ): Promise<void> => {
+    reconnectAttempts = 0;
+    isConnecting = false;
+
+    if (handler) {
+      onMessage = handler;
+    }
+
+    if (socket) {
+      cleanListeners();
+      if (socket.connected) {
+        socket.disconnect();
+      }
+      socket = null;
+    }
+
+    const token = await getAuthToken();
+    socket = io(`${normalizeUrl(url)}/widget-chat`, {
+      ...SOCKET_CONFIG,
+      extraHeaders: { Authorization: `Bearer ${token}` },
+    });
+
+    attachListeners();
+
+    await connectWithRetry();
   };
 
   const setConnectionStateHandler = (handler: ConnectionStateHandler) => {
@@ -288,6 +302,7 @@ export const createChatService = (widgetKey: string) => {
   return {
     connectSocket,
     disconnectSocket,
+    reconnectSocket,
     sendMessage,
     isConnected: () => Boolean(socket?.connected),
     getSocketId: () => socket?.id ?? null,

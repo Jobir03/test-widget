@@ -51,9 +51,6 @@ export const createApiClient = (
     timeout: 10000,
   });
 
-  // Only set auth configuration if not already set to prevent duplicates
-  // The useChat hook will handle the initial setup
-
   instance.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
       if (!config.url?.includes("widget-auth")) {

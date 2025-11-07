@@ -14,45 +14,33 @@ const createAuthService = () => {
   const tokenListeners = new Set<(token: string | null) => void>();
   const baseUrlListeners = new Set<(baseUrl: string) => void>();
 
-  // Helper function for API requests
-
-  // Set the widget key for authentication
   const setWidgetKey = (key: string): void => {
     widgetKey = key;
   };
 
-  // Set base URL dynamically
   const setBaseUrl = (baseUrl: string): void => {
     API_BASE = baseUrl.replace(/\/$/, "");
     baseUrlListeners.forEach((cb) => cb(API_BASE));
   };
 
-  // Set token data in local storage (no expiry tracking; rely on backend 401)
   const setTokenData = (data: AuthResponse): void => {
     localStorage.setItem(TOKEN_KEY, data.access_token);
     localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
     tokenListeners.forEach((cb) => cb(data.access_token));
   };
 
-  // Clear all tokens from local storage
   const clearToken = (): void => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     tokenListeners.forEach((cb) => cb(null));
   };
 
-  // Get stored token from local storage
   const getStoredToken = (): string | null => {
     return localStorage.getItem(TOKEN_KEY);
   };
 
-  // Backwards-compat: removed expiry logic; always rely on server 401
-
-  // Authenticate with widget key
   const authenticate = async (key: string): Promise<AuthResponse> => {
-    // Prevent duplicate authentication calls
     if (isAuthenticating) {
-      // Wait for the current authentication to complete
       return new Promise((resolve, reject) => {
         const checkAuth = () => {
           if (!isAuthenticating) {
@@ -104,7 +92,6 @@ const createAuthService = () => {
     }
   };
 
-  // Refresh access token using refresh token
   const refreshAccessToken = async (): Promise<string> => {
     const refreshTokenValue = localStorage.getItem(REFRESH_TOKEN_KEY);
     if (!refreshTokenValue) {
@@ -133,23 +120,30 @@ const createAuthService = () => {
       return data.access_token;
     } catch (error) {
       console.error("Token refresh error:", error);
-      clearToken();
+      if (
+        error instanceof Error &&
+        (error.message.includes("401") ||
+          error.message.includes("403") ||
+          error.message.includes("Unauthorized") ||
+          error.message.includes("Forbidden"))
+      ) {
+        clearToken();
+      }
       throw error;
     }
   };
 
-  // Get token. If forceRefresh -> try refresh; otherwise return stored token or authenticate.
   const getToken = async (
     key?: string,
     forceRefresh = false
   ): Promise<string> => {
     const storedToken = localStorage.getItem(TOKEN_KEY);
-    const hasRefresh = Boolean(localStorage.getItem(REFRESH_TOKEN_KEY));
     const currentWidgetKey = key || widgetKey;
 
     if (!forceRefresh && storedToken) return storedToken;
 
-    if (hasRefresh) {
+    const hasRefresh = Boolean(localStorage.getItem(REFRESH_TOKEN_KEY));
+    if (forceRefresh && hasRefresh) {
       try {
         return await refreshAccessToken();
       } catch (error) {
@@ -169,7 +163,6 @@ const createAuthService = () => {
     throw new Error("No authentication method available");
   };
 
-  // Event subscriptions
   const onTokenChanged = (cb: (token: string | null) => void): (() => void) => {
     tokenListeners.add(cb);
     return () => tokenListeners.delete(cb);
@@ -179,13 +172,11 @@ const createAuthService = () => {
     return () => baseUrlListeners.delete(cb);
   };
 
-  // Public API
   return {
     setBaseUrl,
     setWidgetKey,
     authenticate,
     refreshAccessToken,
-    // backwards compatibility alias
     refreshToken: refreshAccessToken,
     getToken,
     clearToken,
@@ -195,6 +186,5 @@ const createAuthService = () => {
   };
 };
 
-// Create and export a singleton instance
 export const authService = createAuthService();
 export default authService;

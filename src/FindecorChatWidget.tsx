@@ -17,31 +17,109 @@ interface FindecorChatWidgetProps {
   apiBase: string;
   socketUrl: string;
   widgetKey: string;
-  themeColor?: string;
+  userId?: string;
+  color: string;
+  textColor: string;
+  widgetSize: "small" | "medium" | "large";
+  position: "TL" | "TR" | "BL" | "BR";
+  borderRadius: string;
+  companyName: string;
+  autoOpen: boolean;
+  headerText: string;
+  offlineMessage: string;
+  inputPlaceholder: string;
 }
 
 const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   apiBase,
   socketUrl,
   widgetKey,
-  themeColor,
+  userId: _userId, // Reserved for future use
+  color,
+  textColor,
+  widgetSize,
+  position,
+  borderRadius,
+  companyName: _companyName, // Reserved for future use
+  autoOpen,
+  headerText,
+  offlineMessage,
+  inputPlaceholder,
 }) => {
+  // Suppress unused variable warnings for reserved props
+  void _userId;
+  void _companyName;
   const { messages, sendMessage, loading, fetching, error } = useChat(
     apiBase,
     socketUrl,
     widgetKey
   );
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const [fullscreen, setFullscreen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ApiClient | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const widgetRef = useRef<HTMLDivElement>(null);
+
+  // Set CSS custom properties for theming
+  useEffect(() => {
+    if (widgetRef.current) {
+      const root =
+        widgetRef.current.closest("#findecor-chat-root") ||
+        document.documentElement;
+      (root as HTMLElement).style.setProperty("--fcw-accent", color);
+      (root as HTMLElement).style.setProperty(
+        "--fcw-accent-contrast",
+        textColor
+      );
+      (root as HTMLElement).style.setProperty(
+        "--fcw-border-radius",
+        borderRadius
+      );
+    }
+  }, [color, textColor, borderRadius]);
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Get position classes
+  const getPositionClasses = () => {
+    const positions = {
+      TL: { top: "24px", left: "24px", bottom: "auto", right: "auto" },
+      TR: { top: "24px", right: "24px", bottom: "auto", left: "auto" },
+      BL: { bottom: "24px", left: "24px", top: "auto", right: "auto" },
+      BR: { bottom: "24px", right: "24px", top: "auto", left: "auto" },
+    };
+    return positions[position];
+  };
+
+  // Get widget size dimensions
+  const getWidgetSize = () => {
+    const sizes = {
+      small: { width: "360px", height: "600px" },
+      medium: { width: "480px", height: "92vh" },
+      large: { width: "600px", height: "92vh" },
+    };
+    return sizes[widgetSize];
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,7 +154,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             },
           }
         );
-        console.log("response", response);
         return `https://storage.googleapis.com${response.url}`;
       } catch (error) {
         console.error("File upload failed:", error);
@@ -87,10 +164,9 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   );
 
   const handleSend = async () => {
-    if ((!input.trim() && !selectedFile) || loading || isUploading) return;
-
+    if ((!input.trim() && !selectedFile) || loading || isUploading || !isOnline)
+      return;
     let imageUrl = "";
-
     try {
       if (selectedFile) {
         setIsUploading(true);
@@ -131,24 +207,28 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   //   }
   // };
 
+  const sizeStyles = getWidgetSize();
+  const positionStyles = getPositionClasses();
+
   return (
-    <>
-      <button
-        className="fcw fcw-launcher"
-        onClick={() => setOpen((p) => !p)}
-        aria-label="Chat"
-      >
-        <MessageCircle size={26} />
-      </button>
+    <div ref={widgetRef}>
+      {!open && (
+        <button
+          className="fcw fcw-launcher"
+          onClick={() => setOpen(true)}
+          aria-label="Chat"
+          style={positionStyles}
+        >
+          <MessageCircle size={26} />
+        </button>
+      )}
 
       {open && (
         <div
           className={`fcw fcw-container ${fullscreen ? "fullscreen" : ""}`}
           style={{
-            // theme via CSS variable
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            "--fcw-accent": themeColor,
+            ...(fullscreen ? {} : { ...positionStyles, ...sizeStyles }),
+            ...(fullscreen ? {} : { borderRadius }),
           }}
         >
           <div className="fcw-header">
@@ -157,8 +237,8 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 <MessageCircle size={22} />
               </div>
               <div className="fcw-title">
-                <h2>Sales Assistant</h2>
-                <span>Online</span>
+                <h2>{headerText}</h2>
+                <span>{isOnline ? "Online" : "Offline"}</span>
               </div>
             </div>
             <div className="fcw-actions">
@@ -174,11 +254,30 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             </div>
           </div>
 
-          {error && (
+          {!isOnline && (
             <div
               className="fcw fcw-quick-replies"
               role="alert"
-              style={{ color: "#c33" }}
+              style={{
+                backgroundColor: "#fff3cd",
+                color: "#856404",
+                padding: "12px 16px",
+                borderBottom: "1px solid #ffc107",
+              }}
+            >
+              {offlineMessage}
+            </div>
+          )}
+          {error && isOnline && (
+            <div
+              className="fcw fcw-quick-replies"
+              role="alert"
+              style={{
+                backgroundColor: "#f8d7da",
+                color: "#721c24",
+                padding: "12px 16px",
+                borderBottom: "1px solid #f5c6cb",
+              }}
             >
               {error}
             </div>
@@ -386,14 +485,16 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               <label
                 htmlFor="file-upload"
                 style={{
-                  cursor: "pointer",
+                  cursor: isOnline ? "pointer" : "not-allowed",
                   padding: "8px",
                   borderRadius: "50%",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   marginRight: "8px",
-                  color: themeColor,
+                  color: isOnline ? color : "#ccc",
+                  opacity: isOnline ? 1 : 0.5,
+                  pointerEvents: isOnline ? "auto" : "none",
                 }}
               >
                 <Paperclip size={20} />
@@ -403,35 +504,43 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Type your message..."
-                disabled={loading || isUploading}
+                placeholder={inputPlaceholder}
+                disabled={loading || isUploading || !isOnline}
                 style={{
                   flex: 1,
                   border: "1px solid #ddd",
                   borderRadius: "8px",
                   padding: "10px 12px",
                   fontSize: "14px",
-                  background: loading || isUploading ? "#f5f5f5" : "#fff",
+                  background:
+                    loading || isUploading || !isOnline ? "#f5f5f5" : "#fff",
+                  cursor:
+                    loading || isUploading || !isOnline
+                      ? "not-allowed"
+                      : "text",
                 }}
               />
               <button
                 onClick={handleSend}
                 disabled={
-                  (loading || isUploading) && !input.trim() && !selectedFile
+                  !isOnline ||
+                  ((loading || isUploading) && !input.trim() && !selectedFile)
                 }
                 style={{
                   background:
-                    (loading || isUploading) && !input.trim() && !selectedFile
+                    !isOnline ||
+                    ((loading || isUploading) && !input.trim() && !selectedFile)
                       ? "#ccc"
-                      : themeColor,
-                  color: "#fff",
+                      : color,
+                  color: textColor,
                   border: "none",
                   borderRadius: "8px",
                   padding: "10px",
                   marginLeft: "8px",
                   fontWeight: 600,
                   cursor:
-                    (loading || isUploading) && !input.trim() && !selectedFile
+                    !isOnline ||
+                    ((loading || isUploading) && !input.trim() && !selectedFile)
                       ? "not-allowed"
                       : "pointer",
                 }}
@@ -442,7 +551,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

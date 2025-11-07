@@ -92,6 +92,39 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     return () => chatService.current?.disconnectSocket();
   }, [apiBase, fetchMessages, onNewMessage, socketUrl, widgetKey]);
 
+  /** Handle online/offline events to reconnect when coming back online */
+  useEffect(() => {
+    const handleOnline = async () => {
+      if (!widgetKey || !socketUrl) return;
+
+      try {
+        console.log("🔄 Internet restored, reconnecting...");
+        
+        // Ensure chat service exists
+        if (!chatService.current) {
+          chatService.current = createChatService(widgetKey);
+        }
+
+        // Reconnect socket and fetch messages
+        // If token is invalid, we'll get 401 error and refresh token will be called automatically
+        await chatService.current.reconnectSocket(socketUrl, onNewMessage);
+        await fetchMessages();
+        setError(null);
+      } catch (error) {
+        console.error("Failed to reconnect after coming online:", error);
+        // If reconnect fails with auth error (401), refresh token will be called automatically
+        // by apiClient interceptor or socket error handler, which will then call authenticate if needed
+        setError("Qayta ulanishda xatolik");
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [widgetKey, socketUrl, fetchMessages, onNewMessage]);
+
   /** Send message */
   const sendMessage = async (text: string, imageUrl: string = "") => {
     if (!chatService.current || (!text.trim() && !imageUrl)) return;
