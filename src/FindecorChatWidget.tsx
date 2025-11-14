@@ -12,6 +12,7 @@ import { useChat } from "./hooks/useChat";
 import { createApiClient, type ApiClient } from "./services/api/apiClient";
 import { ProductRecommendations } from "./components/ProductRecommendations/ProductRecommendations";
 import ScheduleVisitForm from "./components/ScheduleVisitForm/ScheduleVisitForm";
+import authService from "./services/chat/auth";
 
 interface FindecorChatWidgetProps {
   apiBase: string;
@@ -67,6 +68,10 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const apiRef = useRef<ApiClient | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    authService.setBaseUrl(apiBase);
+  }, [apiBase]);
 
   // Set CSS custom properties for theming
   useEffect(() => {
@@ -415,7 +420,12 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                           )}
                         </div>
                       ))}
-                      {showScheduleForm && <ScheduleVisitForm />}
+                      {showScheduleForm && (
+                        <ScheduleVisitForm
+                          widgetKey={widgetKey}
+                          onClose={() => setShowScheduleForm(false)}
+                        />
+                      )}
                     </div>
                   );
                 });

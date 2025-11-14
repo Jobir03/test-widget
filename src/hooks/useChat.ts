@@ -98,8 +98,8 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       if (!widgetKey || !socketUrl) return;
 
       try {
-        console.log("🔄 Internet restored, reconnecting...");
-        
+        console.log(" Internet restored, reconnecting...");
+
         // Ensure chat service exists
         if (!chatService.current) {
           chatService.current = createChatService(widgetKey);
@@ -107,7 +107,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
 
         // Reconnect socket and fetch messages
         // If token is invalid, we'll get 401 error and refresh token will be called automatically
-        await chatService.current.reconnectSocket(socketUrl, onNewMessage);
+        await chatService.current.connectSocket(socketUrl, onNewMessage);
         await fetchMessages();
         setError(null);
       } catch (error) {

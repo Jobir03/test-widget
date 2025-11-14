@@ -1,23 +1,92 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { Calendar as CalIcon } from "lucide-react";
 import "./ScheduleVisitForm.css";
+import { scheduleService, type Branch } from "../../services/chat/schedule";
 
-export default function ScheduleVisitForm() {
+interface ScheduleVisitFormProps {
+  widgetKey: string;
+  onClose?: () => void;
+}
+
+const MOCK_PRODUCT = {
+  id: "ab6c4cca-8d3b-4e0b-bc6b-cd2ae0c06f95",
+  name: "2' 2 x 3' 11 Pirate Whimsy Kids Runner Rug",
+};
+
+export default function ScheduleVisitForm({
+  widgetKey,
+  onClose,
+}: ScheduleVisitFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState("");
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(MOCK_PRODUCT.id);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    if (!name || !email || !date || !time) {
+  useEffect(() => {
+    let isActive = true;
+    const loadBranches = async () => {
+      setLoadingBranches(true);
+      try {
+        const res = await scheduleService.getBranches(widgetKey);
+        if (isActive) {
+          setBranches(res.data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (isActive) {
+          setLoadingBranches(false);
+        }
+      }
+    };
+
+    loadBranches();
+    return () => {
+      isActive = false;
+    };
+  }, [widgetKey]);
+
+  const handleSubmit = async () => {
+    if (!name || !email || !date || !time || !selectedBranchId) {
       alert("Iltimos, barcha maydonlarni to'ldiring!");
       return;
     }
-    alert(
-      `Tashrif rejalashtirildi!\nIsm: ${name}\nEmail: ${email}\nSana: ${date.toLocaleDateString()}\nVaqt: ${time}`
-    );
+    try {
+      setSubmitting(true);
+
+      const isoDate = new Date(date);
+      const [hours, minutesPart] = time.split(":");
+      const minutes = minutesPart?.slice(0, 2) || "00";
+      isoDate.setHours(Number(hours), Number(minutes), 0, 0);
+
+      await scheduleService.createSchedule(widgetKey, {
+        branchId: selectedBranchId,
+        productId: selectedProductId,
+        bookedTime: isoDate.toISOString(),
+        firstName: name,
+        lastName: "",
+        email,
+      });
+
+      alert("Tashrif muvaffaqiyatli rejalashtirildi!");
+      if (onClose) {
+        onClose();
+      }
+    } catch (e) {
+      console.error(e);
+      alert(
+        "Tashrifni rejalashtirishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const times = [
@@ -42,26 +111,62 @@ export default function ScheduleVisitForm() {
       <div className="schedule-container fcw">
         <div className="schedule-card fcw">
           <div className="schedule-form">
-            <div className="schedule-form-group">
-              <label className="schedule-label">Name</label>
-              <input
-                type="text"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="schedule-input"
-              />
+            <div className="schedule-row">
+              <div className="schedule-form-group">
+                <label className="schedule-label">Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="schedule-input"
+                />
+              </div>
+
+              <div className="schedule-form-group">
+                <label className="schedule-label">Email or Phone</label>
+                <input
+                  type="text"
+                  placeholder="Enter your email or phone"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="schedule-input"
+                />
+              </div>
             </div>
 
-            <div className="schedule-form-group">
-              <label className="schedule-label">Email or Phone</label>
-              <input
-                type="text"
-                placeholder="Enter your email or phone"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="schedule-input"
-              />
+            <div className="schedule-row">
+              <div className="schedule-form-group">
+                <label className="schedule-label">Branch</label>
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                  className="schedule-select"
+                  disabled={loadingBranches}
+                >
+                  <option value="">
+                    {loadingBranches
+                      ? "Loading branches..."
+                      : "Choose a branch"}
+                  </option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="schedule-form-group">
+                <label className="schedule-label">Product</label>
+                <select
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                  className="schedule-select"
+                >
+                  <option value={MOCK_PRODUCT.id}>{MOCK_PRODUCT.name}</option>
+                </select>
+              </div>
             </div>
 
             <div className="schedule-form-group">
@@ -106,11 +211,19 @@ export default function ScheduleVisitForm() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!name || !email || !date || !time}
+              disabled={
+                submitting ||
+                !name ||
+                !email ||
+                !date ||
+                !time ||
+                !selectedBranchId ||
+                !selectedProductId
+              }
               className="schedule-submit-button"
             >
               <CalIcon size={18} />
-              Schedule Visit
+              {submitting ? "Scheduling..." : "Schedule Visit"}
             </button>
           </div>
         </div>

@@ -1,6 +1,34 @@
+// auth.ts
 let API_BASE = "https://admin-backend.findecor.io";
 const TOKEN_KEY = "findecor_chat_token";
 const REFRESH_TOKEN_KEY = "findecor_chat_refresh_token";
+const COOKIE_PATH = "/";
+const COOKIE_DOMAIN = window.location.hostname;
+
+export const getApiBase = () => API_BASE;
+
+// Cookie utilities
+const setCookie = (name: string, value: string, days = 1): void => {
+  const date = new Date();
+  date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+  const expires = `expires=${date.toUTCString()}`;
+  document.cookie = `${name}=${value};${expires};path=${COOKIE_PATH};domain=${COOKIE_DOMAIN};SameSite=Lax`;
+};
+
+const getCookie = (name: string): string | null => {
+  const nameEQ = `${name}=`;
+  const ca = document.cookie.split(";");
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === " ") c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+};
+
+const deleteCookie = (name: string): void => {
+  document.cookie = `${name}=; Max-Age=-99999999; path=${COOKIE_PATH}; domain=${COOKIE_DOMAIN}`;
+};
 
 export interface AuthResponse {
   access_token: string;
@@ -24,19 +52,21 @@ const createAuthService = () => {
   };
 
   const setTokenData = (data: AuthResponse): void => {
-    localStorage.setItem(TOKEN_KEY, data.access_token);
-    localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+    // Store access token with 1 hour expiration
+    setCookie(TOKEN_KEY, data.access_token, 1 / 24);
+    // Store refresh token with 7 days expiration
+    setCookie(REFRESH_TOKEN_KEY, data.refresh_token, 7);
     tokenListeners.forEach((cb) => cb(data.access_token));
   };
 
   const clearToken = (): void => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    deleteCookie(TOKEN_KEY);
+    deleteCookie(REFRESH_TOKEN_KEY);
     tokenListeners.forEach((cb) => cb(null));
   };
 
   const getStoredToken = (): string | null => {
-    return localStorage.getItem(TOKEN_KEY);
+    return getCookie(TOKEN_KEY);
   };
 
   const authenticate = async (key: string): Promise<AuthResponse> => {
@@ -93,7 +123,7 @@ const createAuthService = () => {
   };
 
   const refreshAccessToken = async (): Promise<string> => {
-    const refreshTokenValue = localStorage.getItem(REFRESH_TOKEN_KEY);
+    const refreshTokenValue = getCookie(REFRESH_TOKEN_KEY);
     if (!refreshTokenValue) {
       throw new Error("No refresh token available");
     }
@@ -120,15 +150,7 @@ const createAuthService = () => {
       return data.access_token;
     } catch (error) {
       console.error("Token refresh error:", error);
-      if (
-        error instanceof Error &&
-        (error.message.includes("401") ||
-          error.message.includes("403") ||
-          error.message.includes("Unauthorized") ||
-          error.message.includes("Forbidden"))
-      ) {
-        clearToken();
-      }
+      clearToken();
       throw error;
     }
   };
@@ -137,12 +159,12 @@ const createAuthService = () => {
     key?: string,
     forceRefresh = false
   ): Promise<string> => {
-    const storedToken = localStorage.getItem(TOKEN_KEY);
+    const storedToken = getCookie(TOKEN_KEY);
     const currentWidgetKey = key || widgetKey;
 
     if (!forceRefresh && storedToken) return storedToken;
 
-    const hasRefresh = Boolean(localStorage.getItem(REFRESH_TOKEN_KEY));
+    const hasRefresh = Boolean(getCookie(REFRESH_TOKEN_KEY));
     if (forceRefresh && hasRefresh) {
       try {
         return await refreshAccessToken();
@@ -167,6 +189,7 @@ const createAuthService = () => {
     tokenListeners.add(cb);
     return () => tokenListeners.delete(cb);
   };
+
   const onBaseUrlChanged = (cb: (baseUrl: string) => void): (() => void) => {
     baseUrlListeners.add(cb);
     return () => baseUrlListeners.delete(cb);
@@ -177,7 +200,6 @@ const createAuthService = () => {
     setWidgetKey,
     authenticate,
     refreshAccessToken,
-    refreshToken: refreshAccessToken,
     getToken,
     clearToken,
     getStoredToken,

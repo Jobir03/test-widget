@@ -1,3 +1,4 @@
+// chatService.ts
 import { io, Socket } from "socket.io-client";
 import { authService } from "./auth";
 import type { ChatMessage, ServerMessage } from "./types";
@@ -7,11 +8,9 @@ type ConnectionStateHandler = (isConnected: boolean) => void;
 
 const SOCKET_CONFIG = {
   path: "/socket.io",
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  timeout: 10000,
+  reconnectionAttempts: 0, // biz o'zimiz boshqaramiz
   autoConnect: false,
+  timeout: 10000,
 } as const;
 
 export const createChatService = (widgetKey: string) => {
@@ -21,6 +20,7 @@ export const createChatService = (widgetKey: string) => {
   let isConnecting = false;
   let reconnectAttempts = 0;
   const MAX_RECONNECT_ATTEMPTS = 3;
+  let hasTriedRefresh = false;
 
   const normalizeUrl = (url: string) => {
     if (!/^https?:\/\//.test(url) && !/^wss?:\/\//.test(url)) {
@@ -30,12 +30,7 @@ export const createChatService = (widgetKey: string) => {
   };
 
   const getAuthToken = async (forceRefresh = false): Promise<string> => {
-    try {
-      return await authService.getToken(widgetKey, forceRefresh);
-    } catch (error) {
-      console.error("Failed to get auth token:", error);
-      throw error;
-    }
+    return await authService.getToken(widgetKey, forceRefresh);
   };
 
   const transformServerMessage = (m: ServerMessage): ChatMessage => ({
@@ -60,6 +55,7 @@ export const createChatService = (widgetKey: string) => {
   const handleConnect = () => {
     console.info("✅ Connected");
     reconnectAttempts = 0;
+    hasTriedRefresh = false;
     onConnectionStateChange?.(true);
   };
 
@@ -67,50 +63,85 @@ export const createChatService = (widgetKey: string) => {
     console.warn("🔌 Disconnected:", reason);
     onConnectionStateChange?.(false);
 
-    if (
-      reason === "io server disconnect" ||
-      reason === "io client disconnect"
-    ) {
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       setTimeout(connectWithRetry, 1000);
+    } else {
+      console.warn("Stopping reconnection — max attempts reached");
     }
   };
 
   const handleConnectError = async (error: Error) => {
-    if (error.message.includes("401") || error.message.includes("403")) {
+    console.error("Connection error:", error);
+
+    // ✅ agar 401 yoki 403 bo‘lsa, faqat bir marta refresh qilamiz
+    if (
+      (error.message.includes("401") || error.message.includes("403")) &&
+      !hasTriedRefresh
+    ) {
+      hasTriedRefresh = true;
       try {
-        const newToken = await getAuthToken(true);
+        console.log("Attempting to refresh token...");
+        const newToken = await authService.refreshAccessToken();
 
         if (socket) {
           socket.io.opts.extraHeaders = {
             ...socket.io.opts.extraHeaders,
             Authorization: `Bearer ${newToken}`,
           };
-          if (!socket.connected && !isConnecting) {
-            await connectWithRetry();
-          }
         }
-      } catch (refreshError: unknown) {
-        console.error("Failed to refresh token:", refreshError);
+
+        reconnectAttempts = 0;
+        await connectWithRetry();
+        return;
+      } catch (refreshError) {
+        console.error("❌ Token refresh failed:", refreshError);
         authService.clearToken();
         onConnectionStateChange?.(false);
+        return;
       }
     }
+
+    reconnectAttempts++;
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.error("Max reconnection attempts reached — stopping");
+      onConnectionStateChange?.(false);
+
+      // agar refresh hali qilinmagan bo‘lsa, bir marta refresh qilamiz
+      if (!hasTriedRefresh) {
+        hasTriedRefresh = true;
+        try {
+          const newAccessToken = await authService.refreshAccessToken();
+          console.log("🔁 Token successfully refreshed after retries");
+          if (socket) {
+            socket.io.opts.extraHeaders = {
+              ...socket.io.opts.extraHeaders,
+              Authorization: `Bearer ${newAccessToken}`,
+            };
+          }
+          reconnectAttempts = 0;
+          await connectWithRetry();
+        } catch (refreshError) {
+          console.error("Token refresh after retries failed:", refreshError);
+          authService.clearToken();
+        }
+      }
+
+      return;
+    }
+
+    // Reconnect backoff
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+    console.log(
+      `Retrying connection in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`
+    );
+    setTimeout(connectWithRetry, delay);
   };
 
   const attachListeners = () => {
     if (!socket) return;
-
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.on("connect_error", handleConnectError);
-    socket.on("connect_timeout", () => console.warn("⌛ Connection timeout"));
-    socket.on("reconnect_attempt", (attempt) =>
-      console.log(`Reconnect attempt ${attempt}`)
-    );
-    socket.on("reconnect_failed", () =>
-      console.error("Reconnection failed after all attempts")
-    );
-
     socket.on("newMessage", (data: ServerMessage) => {
       onMessage?.(transformServerMessage(data));
     });
@@ -118,70 +149,47 @@ export const createChatService = (widgetKey: string) => {
 
   const cleanListeners = () => {
     if (!socket) return;
-
     socket.off("connect", handleConnect);
     socket.off("disconnect", handleDisconnect);
     socket.off("connect_error", handleConnectError);
-    socket.off("connect_timeout");
-    socket.off("reconnect_attempt");
-    socket.off("reconnect_failed");
     socket.off("newMessage");
   };
 
   const connectWithRetry = async (): Promise<void> => {
-    if (!socket || isConnecting) return;
-
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
-
+    if (isConnecting) return;
     isConnecting = true;
-    reconnectAttempts++;
 
     try {
       const token = await getAuthToken(false);
+      if (!socket) throw new Error("Socket not initialized");
 
-      if (socket) {
-        socket.io.opts.extraHeaders = {
-          ...socket.io.opts.extraHeaders,
-          Authorization: `Bearer ${token}`,
-        };
+      socket.io.opts.extraHeaders = {
+        ...socket.io.opts.extraHeaders,
+        Authorization: `Bearer ${token}`,
+      };
 
-        if (!socket.connected) {
-          await new Promise<void>((resolve, reject) => {
-            if (!socket) return reject(new Error("Socket not initialized"));
+      await new Promise<void>((resolve, reject) => {
+        if (!socket) return reject(new Error("Socket not initialized"));
 
-            const timeout = setTimeout(() => {
-              socket?.off("connect", onConnect);
-              reject(new Error("Connection timeout"));
-            }, 10000);
+        const timeout = setTimeout(() => {
+          reject(new Error("Connection timeout"));
+        }, 10000);
 
-            const onConnect = () => {
-              clearTimeout(timeout);
-              resolve();
-            };
+        socket.once("connect", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
 
-            socket.once("connect", onConnect);
-            socket.connect();
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Connection error:", error);
+        socket.once("connect_error", (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
 
-      if (
-        error instanceof Error &&
-        (error.message.includes("401") || error.message.includes("403"))
-      ) {
-        authService.clearToken();
-      }
-
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-      console.log(`Retrying connection in ${delay}ms...`);
-
-      setTimeout(() => {
-        connectWithRetry();
-      }, delay);
-
-      throw error;
+        socket.connect();
+      });
+    } catch (err) {
+      console.error("Connection attempt failed:", err);
+      handleConnectError(err as Error);
     } finally {
       isConnecting = false;
     }
@@ -190,9 +198,7 @@ export const createChatService = (widgetKey: string) => {
   const connectSocket = async (url: string, handler: MessageHandler) => {
     if (socket) {
       cleanListeners();
-      if (socket.connected) {
-        socket.disconnect();
-      }
+      if (socket.connected) socket.disconnect();
       socket = null;
     }
 
@@ -205,67 +211,16 @@ export const createChatService = (widgetKey: string) => {
     });
 
     attachListeners();
-
-    authService.onTokenChanged(async (newToken) => {
-      if (!socket) return;
-      socket.io.opts.extraHeaders = {
-        ...socket.io.opts.extraHeaders,
-        ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
-      };
-      if (newToken && !socket.connected && !isConnecting) {
-        await connectWithRetry();
-      }
-    });
-
     await connectWithRetry();
   };
 
   const disconnectSocket = () => {
     if (!socket) return;
-
     cleanListeners();
-
-    if (socket.connected) {
-      socket.disconnect();
-    }
-
+    if (socket.connected) socket.disconnect();
     socket = null;
     onMessage = null;
     onConnectionStateChange?.(false);
-  };
-
-  const reconnectSocket = async (
-    url: string,
-    handler?: MessageHandler
-  ): Promise<void> => {
-    reconnectAttempts = 0;
-    isConnecting = false;
-
-    if (handler) {
-      onMessage = handler;
-    }
-
-    if (socket) {
-      cleanListeners();
-      if (socket.connected) {
-        socket.disconnect();
-      }
-      socket = null;
-    }
-
-    const token = await getAuthToken();
-    socket = io(`${normalizeUrl(url)}/widget-chat`, {
-      ...SOCKET_CONFIG,
-      extraHeaders: { Authorization: `Bearer ${token}` },
-    });
-
-    attachListeners();
-
-    await connectWithRetry();
-  };
-
-  const setConnectionStateHandler = (handler: ConnectionStateHandler) => {
-    onConnectionStateChange = handler;
   };
 
   const sendMessage = (
@@ -302,11 +257,11 @@ export const createChatService = (widgetKey: string) => {
   return {
     connectSocket,
     disconnectSocket,
-    reconnectSocket,
     sendMessage,
     isConnected: () => Boolean(socket?.connected),
     getSocketId: () => socket?.id ?? null,
-    setConnectionStateHandler,
+    setConnectionStateHandler: (cb: ConnectionStateHandler) =>
+      (onConnectionStateChange = cb),
   };
 };
 
