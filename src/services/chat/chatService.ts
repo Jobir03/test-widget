@@ -1,7 +1,7 @@
 // chatService.ts
 import { io, Socket } from "socket.io-client";
 import { authService } from "./auth";
-import type { ChatMessage, ServerMessage } from "./types";
+import type { ChatMessage, ServerMessage, SchedulePayload } from "./types";
 
 type MessageHandler = (msg: ChatMessage) => void;
 type ConnectionStateHandler = (isConnected: boolean) => void;
@@ -21,6 +21,9 @@ export const createChatService = (widgetKey: string) => {
   let reconnectAttempts = 0;
   const MAX_RECONNECT_ATTEMPTS = 3;
   let hasTriedRefresh = false;
+
+  const isOnline = () =>
+    typeof navigator !== "undefined" ? navigator.onLine : true;
 
   const normalizeUrl = (url: string) => {
     if (!/^https?:\/\//.test(url) && !/^wss?:\/\//.test(url)) {
@@ -50,6 +53,9 @@ export const createChatService = (widgetKey: string) => {
           email: m.widgetUser.email || undefined,
         }
       : undefined,
+    type: m.type,
+    options: m.options ?? [],
+    schedule: m.schedule ?? null,
   });
 
   const handleConnect = () => {
@@ -63,6 +69,11 @@ export const createChatService = (widgetKey: string) => {
     console.warn("🔌 Disconnected:", reason);
     onConnectionStateChange?.(false);
 
+    if (!isOnline()) {
+      console.warn("Skipping reconnection because browser is offline");
+      return;
+    }
+
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       setTimeout(connectWithRetry, 1000);
     } else {
@@ -72,6 +83,12 @@ export const createChatService = (widgetKey: string) => {
 
   const handleConnectError = async (error: Error) => {
     console.error("Connection error:", error);
+
+    if (!isOnline()) {
+      console.warn("Skipping reconnection because browser is offline");
+      onConnectionStateChange?.(false);
+      return;
+    }
 
     // ✅ agar 401 yoki 403 bo‘lsa, faqat bir marta refresh qilamiz
     if (
@@ -160,6 +177,9 @@ export const createChatService = (widgetKey: string) => {
     isConnecting = true;
 
     try {
+      if (!isOnline()) {
+        throw new Error("Browser offline");
+      }
       const token = await getAuthToken(false);
       if (!socket) throw new Error("Socket not initialized");
 
@@ -225,13 +245,22 @@ export const createChatService = (widgetKey: string) => {
 
   const sendMessage = (
     text: string,
-    imageUrl: string = ""
+    imageUrl: string = "",
+    schedule?: SchedulePayload | null
   ): Promise<ChatMessage> => {
     if (!socket) throw new Error("Socket not initialized");
-    const payload = {
+    const payload: {
+      text: string;
+      images: string[];
+      schedule?: SchedulePayload | null;
+    } = {
       text: text.trim(),
       images: imageUrl ? [imageUrl] : [],
     };
+
+    if (schedule) {
+      payload.schedule = schedule;
+    }
 
     return new Promise<ChatMessage>((resolve, reject) => {
       socket!.emit("sendMessage", payload, (res: { error?: string } | null) => {
@@ -247,6 +276,7 @@ export const createChatService = (widgetKey: string) => {
           images: imageUrl ? [imageUrl] : [],
           timestamp: new Date(),
           products: [],
+          schedule: schedule ?? null,
         };
 
         resolve(msg);

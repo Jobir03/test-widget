@@ -6,9 +6,8 @@ import type {
   ChatMessage,
   ServerMessage,
   PaginatedResponse,
+  SchedulePayload,
 } from "../services/chat/types";
-
-// No initial seeded messages; UI will render an empty state
 
 export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -17,6 +16,10 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const [error, setError] = useState<string | null>(null);
   const chatService = useRef<ReturnType<typeof createChatService> | null>(null);
   const apiRef = useRef<ReturnType<typeof createApiClient> | null>(null);
+  const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>([]);
+
+  const isOnline = () =>
+    typeof navigator !== "undefined" ? navigator.onLine : true;
 
   /** Transform API message to internal message */
   const mapServerMessage = (m: ServerMessage): ChatMessage => ({
@@ -36,12 +39,20 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
           email: m.widgetUser.email || undefined,
         }
       : undefined,
+    type: m.type,
+    options: m.options ?? [],
+    schedule: m.schedule ?? null,
   });
 
   /** Fetch message history (paginated) */
   const fetchMessages = useCallback(async () => {
     setFetching(true);
     setError(null);
+
+    if (!isOnline()) {
+      setFetching(false);
+      return;
+    }
 
     try {
       if (!apiRef.current) {
@@ -55,10 +66,13 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         { params: { page: 1, limit: 100 } }
       );
       const formatted = data.data.map(mapServerMessage);
+      const firstChoiceMessage = formatted.find((msg) => msg.from === "bot");
+      setQuickReplyOptions(firstChoiceMessage?.options ?? []);
       setMessages(formatted);
     } catch (err) {
       console.error("Fetch error:", err);
       setMessages([]);
+      setQuickReplyOptions([]);
       setError("Failed to load messages");
     } finally {
       setFetching(false);
@@ -68,15 +82,21 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   /** Handle new incoming message */
   const onNewMessage = useCallback((msg: ChatMessage) => {
     if (!msg) return;
+    if (msg.type === "single_choice") {
+      setQuickReplyOptions(msg.options ?? []);
+    }
     setMessages((prev) => [...prev, msg]);
     setLoading(false);
   }, []);
 
-  /** Initialize socket + fetch history */
   useEffect(() => {
     if (!widgetKey) return;
 
-    // Set auth configuration only once
+    if (!isOnline()) {
+      setFetching(false);
+      return;
+    }
+
     authService.setBaseUrl(apiBase);
     authService.setWidgetKey(widgetKey);
 
@@ -91,6 +111,15 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
 
     return () => chatService.current?.disconnectSocket();
   }, [apiBase, fetchMessages, onNewMessage, socketUrl, widgetKey]);
+
+  useEffect(() => {
+    const handleOffline = () => {
+      chatService.current?.disconnectSocket();
+    };
+
+    window.addEventListener("offline", handleOffline);
+    return () => window.removeEventListener("offline", handleOffline);
+  }, []);
 
   /** Handle online/offline events to reconnect when coming back online */
   useEffect(() => {
@@ -125,14 +154,18 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     };
   }, [widgetKey, socketUrl, fetchMessages, onNewMessage]);
 
-  /** Send message */
-  const sendMessage = async (text: string, imageUrl: string = "") => {
-    if (!chatService.current || (!text.trim() && !imageUrl)) return;
+  const sendMessage = async (
+    text: string,
+    imageUrl: string = "",
+    schedule?: SchedulePayload | null
+  ) => {
+    if (!chatService.current || (!text.trim() && !imageUrl && !schedule))
+      return;
     setLoading(true);
     setError(null);
 
     try {
-      await chatService.current.sendMessage(text, imageUrl);
+      await chatService.current.sendMessage(text, imageUrl, schedule);
     } catch {
       setError("Failed to send message");
       setMessages((prev) => [
@@ -151,5 +184,5 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     }
   };
 
-  return { messages, sendMessage, loading, fetching, error };
+  return { messages, quickReplyOptions, sendMessage, loading, fetching, error };
 }

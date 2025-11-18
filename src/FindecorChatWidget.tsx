@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Calendar,
   Maximize2,
@@ -10,51 +10,30 @@ import {
 } from "lucide-react";
 import { useChat } from "./hooks/useChat";
 import { createApiClient, type ApiClient } from "./services/api/apiClient";
-import { ProductRecommendations } from "./components/ProductRecommendations/ProductRecommendations";
-import ScheduleVisitForm from "./components/ScheduleVisitForm/ScheduleVisitForm";
+import ChatMessages from "./components/ChatMessages";
 import authService from "./services/chat/auth";
-
-interface FindecorChatWidgetProps {
-  apiBase: string;
-  socketUrl: string;
-  widgetKey: string;
-  userId?: string;
-  color: string;
-  textColor: string;
-  widgetSize: "small" | "medium" | "large";
-  position: "TL" | "TR" | "BL" | "BR";
-  borderRadius: string;
-  companyName: string;
-  autoOpen: boolean;
-  headerText: string;
-  offlineMessage: string;
-  inputPlaceholder: string;
-}
+import type { FindecorChatWidgetProps } from "./types/FindecorChatWidget.types";
 
 const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   apiBase,
   socketUrl,
   widgetKey,
-  userId: _userId, // Reserved for future use
+  userId: _userId,
   color,
   textColor,
   widgetSize,
   position,
   borderRadius,
-  companyName: _companyName, // Reserved for future use
+  companyName: _companyName,
   autoOpen,
   headerText,
   offlineMessage,
   inputPlaceholder,
 }) => {
-  // Suppress unused variable warnings for reserved props
   void _userId;
   void _companyName;
-  const { messages, sendMessage, loading, fetching, error } = useChat(
-    apiBase,
-    socketUrl,
-    widgetKey
-  );
+  const { messages, quickReplyOptions, sendMessage, loading, fetching, error } =
+    useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
   const [fullscreen, setFullscreen] = useState(false);
@@ -73,7 +52,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     authService.setBaseUrl(apiBase);
   }, [apiBase]);
 
-  // Set CSS custom properties for theming
   useEffect(() => {
     if (widgetRef.current) {
       const root =
@@ -91,7 +69,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     }
   }, [color, textColor, borderRadius]);
 
-  // Monitor online/offline status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -105,26 +82,9 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     };
   }, []);
 
-  // Get position classes
-  const getPositionClasses = () => {
-    const positions = {
-      TL: { top: "24px", left: "24px", bottom: "auto", right: "auto" },
-      TR: { top: "24px", right: "24px", bottom: "auto", left: "auto" },
-      BL: { bottom: "24px", left: "24px", top: "auto", right: "auto" },
-      BR: { bottom: "24px", right: "24px", top: "auto", left: "auto" },
-    };
-    return positions[position];
-  };
+  const positionClass = useMemo(() => `pos-${position}` as const, [position]);
 
-  // Get widget size dimensions
-  const getWidgetSize = () => {
-    const sizes = {
-      small: { width: "360px", height: "600px" },
-      medium: { width: "480px", height: "92vh" },
-      large: { width: "600px", height: "92vh" },
-    };
-    return sizes[widgetSize];
-  };
+  const sizeClass = useMemo(() => `size-${widgetSize}` as const, [widgetSize]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -191,7 +151,14 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     }
   };
 
-  // Scroll to bottom on new messages and turn off typing when bot responds
+  useEffect(() => {
+    if (!messages.length) return;
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.schedule) {
+      setShowScheduleForm(false);
+    }
+  }, [messages]);
+
   useEffect(() => {
     if (open && messagesContainerRef.current) {
       const container = messagesContainerRef.current;
@@ -200,11 +167,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     if (isTyping) setIsTyping(false);
   }, [messages, open, isTyping]);
 
-  const formatDate = (date: Date) =>
-    `${String(date.getDate()).padStart(2, "0")}/${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}/${date.getFullYear()}`;
-
   // const handleProductRedirect = (url: string) => {
   //   const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
   //   if (iframe) {
@@ -212,17 +174,13 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   //   }
   // };
 
-  const sizeStyles = getWidgetSize();
-  const positionStyles = getPositionClasses();
-
   return (
     <div ref={widgetRef}>
       {!open && (
         <button
-          className="fcw fcw-launcher"
+          className={`fcw fcw-launcher ${positionClass}`}
           onClick={() => setOpen(true)}
           aria-label="Chat"
-          style={positionStyles}
         >
           <MessageCircle size={26} />
         </button>
@@ -230,9 +188,10 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
 
       {open && (
         <div
-          className={`fcw fcw-container ${fullscreen ? "fullscreen" : ""}`}
+          className={`fcw fcw-container ${positionClass} ${sizeClass} ${
+            fullscreen ? "fullscreen" : ""
+          }`}
           style={{
-            ...(fullscreen ? {} : { ...positionStyles, ...sizeStyles }),
             ...(fullscreen ? {} : { borderRadius }),
           }}
         >
@@ -266,6 +225,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               style={{
                 backgroundColor: "#fff3cd",
                 color: "#856404",
+                fontSize: "14px",
                 padding: "12px 16px",
                 borderBottom: "1px solid #ffc107",
               }}
@@ -288,149 +248,14 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             </div>
           )}
           <div ref={messagesContainerRef} className="fcw fcw-messages">
-            {fetching ? (
-              <div className="fcw fcw-empty">Loading messages…</div>
-            ) : (
-              (() => {
-                const groupedMessages: Record<string, typeof messages> = {};
-                messages.forEach((msg) => {
-                  const d = new Date(msg.timestamp);
-                  const dateKey = formatDate(d);
-                  if (!groupedMessages[dateKey]) groupedMessages[dateKey] = [];
-                  groupedMessages[dateKey].push(msg);
-                });
-                const sortedDates = Object.keys(groupedMessages).sort(
-                  (a, b) => {
-                    const [da, ma, ya] = a.split("/").map(Number);
-                    const [db, mb, yb] = b.split("/").map(Number);
-                    return (
-                      new Date(ya, ma - 1, da).getTime() -
-                      new Date(yb, mb - 1, db).getTime()
-                    );
-                  }
-                );
-
-                return sortedDates.map((date) => {
-                  const msgs = groupedMessages[date].sort(
-                    (a, b) =>
-                      new Date(a.timestamp).getTime() -
-                      new Date(b.timestamp).getTime()
-                  );
-
-                  return (
-                    <div key={date} style={{ width: "100%" }}>
-                      <div
-                        style={{
-                          textAlign: "center",
-                          fontSize: "12px",
-                          color: "#666",
-                          margin: "12px 0",
-                        }}
-                      >
-                        {date}
-                      </div>
-                      {msgs.map((msg) => (
-                        <div key={msg.id} className="fcw fcw-message">
-                          {msg?.text && (
-                            <div
-                              className={`fcw fcw-bubble ${
-                                msg.from === "user" ? "user" : "bot"
-                              }`}
-                            >
-                              {msg.text}
-                              <span className="fcw fcw-time">
-                                {new Date(msg.timestamp).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </span>
-                            </div>
-                          )}
-                          {msg?.images && msg.images.length > 0 && (
-                            <div
-                              className={`fcw fcw-bubble ${
-                                msg.from === "user" ? "user" : "bot"
-                              }`}
-                            >
-                              <div
-                                style={{
-                                  marginTop: "8px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "4px",
-                                }}
-                              >
-                                {msg.images.map((img, idx) => (
-                                  <img
-                                    key={idx}
-                                    src={img}
-                                    loading="lazy"
-                                    referrerPolicy="no-referrer"
-                                    alt={`Attachment ${idx + 1}`}
-                                    style={{
-                                      maxWidth: "100%",
-                                      maxHeight: "200px",
-                                      borderRadius: "8px",
-                                      objectFit: "cover",
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              <span className="fcw fcw-time">
-                                {new Date(msg.timestamp).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </span>
-                            </div>
-                          )}
-
-                          {msg?.products && msg.products.length > 0 && (
-                            <div
-                              style={{
-                                width: "100%",
-                              }}
-                              className={`fcw fcw-bubble ${
-                                msg.from === "user" ? "user" : "bot"
-                              }`}
-                            >
-                              <ProductRecommendations
-                                products={msg.products}
-                                onProductClick={(product) => {
-                                  sendMessage(product.name);
-                                }}
-                              />
-
-                              <span className="fcw fcw-time">
-                                {new Date(msg.timestamp).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {showScheduleForm && (
-                        <ScheduleVisitForm
-                          widgetKey={widgetKey}
-                          onClose={() => setShowScheduleForm(false)}
-                        />
-                      )}
-                    </div>
-                  );
-                });
-              })()
-            )}
+            <ChatMessages
+              messages={messages}
+              fetching={fetching}
+              sendMessage={sendMessage}
+              showScheduleForm={showScheduleForm}
+              onCloseSchedule={() => setShowScheduleForm(false)}
+              widgetKey={widgetKey}
+            />
             {isTyping && (
               <div className="fcw fcw-bubble bot">
                 <span className="fcw fcw-typing">
@@ -442,6 +267,22 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             )}
           </div>
           <div className="fcw fcw-quick-replies">
+            {quickReplyOptions.length > 0 && (
+              <div className="fcw-chips-container">
+                {quickReplyOptions.map((label) => (
+                  <button
+                    key={label}
+                    className="fcw fcw-chip"
+                    onClick={() => {
+                      if (!isOnline || loading || isUploading) return;
+                      sendMessage(label, "");
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               className="schedule-visit"
               onClick={() => setShowScheduleForm(true)}
@@ -449,19 +290,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               <Calendar size={16} />
               Schedule Visit
             </button>
-            <div className="fcw-chips-container">
-              {["Show me rugs", "I need a carpet", "What's on sale?"].map(
-                (label) => (
-                  <button
-                    key={label}
-                    className="fcw fcw-chip"
-                    onClick={() => setInput(label)}
-                  >
-                    {label}
-                  </button>
-                )
-              )}
-            </div>
           </div>
           <div className="fcw fcw-input">
             {selectedFile && (

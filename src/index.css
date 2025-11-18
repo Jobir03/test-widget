@@ -1,6 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
+  --fcw-font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI";
   --fcw-color: #1f2937;
   --fcw-bg: #ffffff;
   --fcw-accent: #0b0b19;
@@ -12,10 +14,17 @@
   --fcw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --fcw-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
   --fcw-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --fcw-width: 480px;
+  --fcw-width-sm: 360px;
+  --fcw-width-lg: 600px;
+  --fcw-height: 92vh;
+  --fcw-main-position: 10px;
+  --fcw-secondary-position: 20px;
+  --fcw-auto-position: auto;
 }
 
 .fcw {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI" !important;
+  font-family: var(--fcw-font-family) !important;
   color: var(--fcw-color);
   box-sizing: border-box;
 }
@@ -23,7 +32,7 @@
 .fcw button,
 .fcw select,
 .fcw textarea {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI" !important;
+  font-family: var(--fcw-font-family) !important;
 }
 
 .fcw *,
@@ -32,11 +41,12 @@
   box-sizing: border-box;
 }
 
-/* Launcher Button */
 .fcw-launcher {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  top: var(--fcw-auto-position);
+  right: var(--fcw-main-position);
+  bottom: var(--fcw-main-position);
+  left: var(--fcw-auto-position);
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -54,28 +64,59 @@
 
 .fcw-launcher:hover {
   transform: scale(1.05);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .fcw-launcher:active {
   transform: scale(0.98);
 }
 
-/* Chat Container */
 .fcw-container {
   position: fixed;
-  bottom: 20px;
-  right: 24px;
-  width: 480px;
-  height: 92vh;
+  top: var(--fcw-auto-position);
+  right: var(--fcw-main-position);
+  bottom: var(--fcw-main-position);
+  left: var(--fcw-auto-position);
+  width: var(--fcw-width);
+  height: var(--fcw-height);
+  max-height: 800px;
   background: var(--fcw-bg);
   border-radius: var(--fcw-border-radius);
-  box-shadow: var(--fcw-shadow-lg), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--fcw-shadow-lg), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 9999;
   animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fcw-container.pos-TL,
+.fcw-launcher.pos-TL {
+  top: var(--fcw-main-position);
+  left: var(--fcw-main-position);
+  right: var(--fcw-auto-position);
+  bottom: var(--fcw-auto-position);
+}
+.fcw-container.pos-TR,
+.fcw-launcher.pos-TR {
+  top: var(--fcw-main-position);
+  right: var(--fcw-main-position);
+  left: var(--fcw-auto-position);
+  bottom: var(--fcw-auto-position);
+}
+.fcw-container.pos-BL,
+.fcw-launcher.pos-BL {
+  bottom: var(--fcw-main-position);
+  left: var(--fcw-main-position);
+  right: var(--fcw-auto-position);
+  top: var(--fcw-auto-position);
+}
+
+.fcw-container.size-small {
+  width: var(--fcw-width-sm);
+}
+.fcw-container.size-large {
+  width: var(--fcw-width-lg);
 }
 
 @keyframes slideIn {
@@ -100,9 +141,8 @@
   margin: 2.5vh 1vw;
 }
 
-/* Header */
 .fcw-header {
-  padding: 16px;
+  padding: 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -112,7 +152,7 @@
 
 .fcw-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--fcw-color);
 }
@@ -126,7 +166,7 @@
 .fcw-header .fcw-title {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   align-items: flex-start;
 }
 
@@ -152,8 +192,8 @@
   color: var(--fcw-muted);
   font-size: 22px;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -166,11 +206,10 @@
   color: var(--fcw-color);
 }
 
-/* Messages Area */
 .fcw-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 1rem;
   background: #fafbfc;
   display: flex;
   flex-direction: column;
@@ -202,11 +241,11 @@
 }
 
 .fcw-bubble {
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: var(--fcw-border-radius);
   max-width: 85%;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.3;
   word-wrap: break-word;
   position: relative;
 }
@@ -241,7 +280,6 @@
   text-align: right;
 }
 
-/* Empty State */
 .fcw-empty {
   height: 100%;
   display: flex;
@@ -254,7 +292,6 @@
   font-size: 14px;
 }
 
-/* Quick Replies */
 .fcw-quick-replies {
   display: flex;
   flex-direction: column;
@@ -291,6 +328,9 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  max-width: 100%;
 }
 
 .fcw-quick-replies .fcw-chips-container::-webkit-scrollbar {
@@ -416,7 +456,6 @@
   cursor: not-allowed;
 }
 
-/* Typing Indicator */
 .fcw-typing {
   display: inline-flex;
   align-items: center;
@@ -457,8 +496,6 @@
   }
 }
 
-/* File Preview */
-
 .fcw-input > div:first-child span {
   flex: 1;
   overflow: hidden;
@@ -467,18 +504,19 @@
   margin-right: 0px;
 }
 
-/* Responsive Design */
 @media (max-width: 480px) {
   .fcw-container {
-    width: 100vw;
-    height: 100vh;
-    bottom: 0;
-    right: 0;
+    width: 95vw !important;
+    height: 90vh !important;
+    margin: 0 auto;
     border-radius: 0;
   }
 
   .fcw-launcher {
     bottom: 20px;
     right: 20px;
+  }
+  .fcw-input-container {
+    gap: 4px;
   }
 }

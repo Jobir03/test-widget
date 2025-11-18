@@ -15,6 +15,9 @@ export interface ServerMessage {
     createdAt?: string;
     updatedAt?: string;
   };
+  type: string | null;
+  options: string[];
+  schedule?: SchedulePayload | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -51,6 +54,15 @@ export interface Product {
   price: number | null;
 }
 
+export interface SchedulePayload {
+  branchId: string;
+  productId: string;
+  bookedTime: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 export interface ChatMessage {
   id: string; // server UUID
   from: "user" | "bot";
@@ -63,4 +75,7 @@ export interface ChatMessage {
     name?: string;
     email?: string;
   };
+  type?: string | null;
+  options?: string[];
+  schedule?: SchedulePayload | null;
 }

@@ -4,10 +4,12 @@ import "react-calendar/dist/Calendar.css";
 import { Calendar as CalIcon } from "lucide-react";
 import "./ScheduleVisitForm.css";
 import { scheduleService, type Branch } from "../../services/chat/schedule";
+import type { SchedulePayload } from "../../services/chat/types";
 
 interface ScheduleVisitFormProps {
   widgetKey: string;
   onClose?: () => void;
+  onSubmitSchedule: (payload: SchedulePayload) => Promise<void> | void;
 }
 
 const MOCK_PRODUCT = {
@@ -18,6 +20,7 @@ const MOCK_PRODUCT = {
 export default function ScheduleVisitForm({
   widgetKey,
   onClose,
+  onSubmitSchedule,
 }: ScheduleVisitFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -66,7 +69,7 @@ export default function ScheduleVisitForm({
       const minutes = minutesPart?.slice(0, 2) || "00";
       isoDate.setHours(Number(hours), Number(minutes), 0, 0);
 
-      await scheduleService.createSchedule(widgetKey, {
+      await onSubmitSchedule({
         branchId: selectedBranchId,
         productId: selectedProductId,
         bookedTime: isoDate.toISOString(),
