@@ -43,6 +43,7 @@ export const createChatService = (widgetKey: string) => {
     images: m.images ?? [],
     products: m.products ?? [],
     timestamp: new Date(m.createdAt),
+    isAdmin: m.isAdmin,
     user: m.widgetUser
       ? {
           id: m.widgetUser.id,

@@ -17,6 +17,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const chatService = useRef<ReturnType<typeof createChatService> | null>(null);
   const apiRef = useRef<ReturnType<typeof createApiClient> | null>(null);
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
 
   const isOnline = () =>
     typeof navigator !== "undefined" ? navigator.onLine : true;
@@ -87,6 +88,9 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     }
     setMessages((prev) => [...prev, msg]);
     setLoading(false);
+    if (msg.isAdmin || (!msg.isAdmin && msg.schedule)) {
+      setIsTyping(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -163,6 +167,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       return;
     setLoading(true);
     setError(null);
+    setIsTyping(true);
 
     try {
       await chatService.current.sendMessage(text, imageUrl, schedule);
@@ -184,5 +189,13 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     }
   };
 
-  return { messages, quickReplyOptions, sendMessage, loading, fetching, error };
+  return {
+    messages,
+    quickReplyOptions,
+    sendMessage,
+    loading,
+    fetching,
+    error,
+    isTyping,
+  };
 }

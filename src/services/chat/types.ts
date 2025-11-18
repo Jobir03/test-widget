@@ -70,6 +70,7 @@ export interface ChatMessage {
   images: string[];
   products: Product[];
   timestamp: Date;
+  isAdmin?: boolean;
   user?: {
     id: string;
     name?: string;

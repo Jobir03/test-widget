@@ -32,12 +32,18 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
 }) => {
   void _userId;
   void _companyName;
-  const { messages, quickReplyOptions, sendMessage, loading, fetching, error } =
-    useChat(apiBase, socketUrl, widgetKey);
+  const {
+    messages,
+    quickReplyOptions,
+    sendMessage,
+    loading,
+    fetching,
+    error,
+    isTyping,
+  } = useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
   const [fullscreen, setFullscreen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -137,7 +143,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
         setIsUploading(true);
         imageUrl = await uploadFile(selectedFile);
       }
-      setIsTyping(true);
       sendMessage(input, imageUrl);
       setInput("");
       setSelectedFile(null);
@@ -164,8 +169,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       const container = messagesContainerRef.current;
       container.scrollTop = container.scrollHeight;
     }
-    if (isTyping) setIsTyping(false);
-  }, [messages, open, isTyping]);
+  }, [messages, open]);
 
   // const handleProductRedirect = (url: string) => {
   //   const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
@@ -257,12 +261,14 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               widgetKey={widgetKey}
             />
             {isTyping && (
-              <div className="fcw fcw-bubble bot">
-                <span className="fcw fcw-typing">
-                  <span className="fcw-typing-dot" />
-                  <span className="fcw-typing-dot" />
-                  <span className="fcw-typing-dot" />
-                </span>
+              <div className="fcw fcw-typing-row">
+                <div className="fcw fcw-bubble bot fcw-typing-bubble">
+                  <span className="fcw fcw-typing">
+                    <span className="fcw-typing-dot" />
+                    <span className="fcw-typing-dot" />
+                    <span className="fcw-typing-dot" />
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -295,18 +301,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             {selectedFile && (
               <div className="fcw sellect-file">
                 <span>{selectedFile.name}</span>
-                <button
-                  onClick={removeFile}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#6b7280",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                <button onClick={removeFile} className="fcw-remove-file-btn">
                   <X size={16} />
                 </button>
               </div>
@@ -317,23 +312,14 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 accept="image/*"
-                style={{ display: "none" }}
+                className="fcw-file-input-hidden"
                 id="file-upload"
               />
               <label
                 htmlFor="file-upload"
-                style={{
-                  cursor: isOnline ? "pointer" : "not-allowed",
-                  padding: "8px",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: "8px",
-                  color: isOnline ? color : "#ccc",
-                  opacity: isOnline ? 1 : 0.5,
-                  pointerEvents: isOnline ? "auto" : "none",
-                }}
+                className={`fcw-file-upload-label${
+                  !isOnline || loading || isUploading ? " disabled" : ""
+                }`}
               >
                 <Paperclip size={20} />
               </label>
@@ -344,19 +330,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
                 placeholder={inputPlaceholder}
                 disabled={loading || isUploading || !isOnline}
-                style={{
-                  flex: 1,
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
-                  padding: "10px 12px",
-                  fontSize: "14px",
-                  background:
-                    loading || isUploading || !isOnline ? "#f5f5f5" : "#fff",
-                  cursor:
-                    loading || isUploading || !isOnline
-                      ? "not-allowed"
-                      : "text",
-                }}
               />
               <button
                 onClick={handleSend}
@@ -364,24 +337,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                   !isOnline ||
                   ((loading || isUploading) && !input.trim() && !selectedFile)
                 }
-                style={{
-                  background:
-                    !isOnline ||
-                    ((loading || isUploading) && !input.trim() && !selectedFile)
-                      ? "#ccc"
-                      : color,
-                  color: textColor,
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "10px",
-                  marginLeft: "8px",
-                  fontWeight: 600,
-                  cursor:
-                    !isOnline ||
-                    ((loading || isUploading) && !input.trim() && !selectedFile)
-                      ? "not-allowed"
-                      : "pointer",
-                }}
               >
                 {loading || isUploading ? "..." : <Send size={18} />}
               </button>
