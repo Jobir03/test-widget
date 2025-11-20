@@ -30,12 +30,15 @@
         const checkWidget = setInterval(() => {
           if (window.FindecorChatWidget) {
             window.FindecorChatWidget.init({
-              widgetKey: "hi_I1WCKl0XzGKgg",
+              widgetKey: "NsswhKZ3QjbMvwFD",
               apiBase: "https://admin-backend.findecor.io",
               socketUrl: "wss://admin-backend.findecor.io",
+              color: "#030213",
+              textColor: "#ffffff",
               widgetSize: "medium",
               position: "BR",
-              borderRadius: "12px",
+              borderRadius: "8px",
+              companyName: "Test Company",
             });
             clearInterval(checkWidget);
           }

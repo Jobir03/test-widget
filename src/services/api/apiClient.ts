@@ -48,7 +48,7 @@ export const createApiClient = (
 ): ApiClient => {
   const instance = axios.create({
     baseURL,
-    timeout: 10000,
+    timeout: 50000,
   });
 
   instance.interceptors.request.use(
@@ -98,10 +98,10 @@ export const createApiClient = (
       } catch (refreshError) {
         // Only retry auth if refresh token failed with 401 (unauthorized)
         // For other errors (502, CORS, network, etc.), reject immediately
-        const is401Error = 
+        const is401Error =
           (refreshError as AxiosError)?.response?.status === 401 ||
           (refreshError as Error)?.message?.includes("401");
-        
+
         if (is401Error && widgetKey) {
           try {
             const authData = await authService.authenticate(widgetKey);
@@ -117,7 +117,7 @@ export const createApiClient = (
             return Promise.reject(reauthErr);
           }
         }
-        
+
         // For non-401 errors (502, CORS, network, etc.), reject without retrying auth
         processQueue(refreshError, null);
         authService.clearToken();

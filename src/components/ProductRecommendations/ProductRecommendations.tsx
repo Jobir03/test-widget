@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./ProductRecommendations.css";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Loader2 } from "lucide-react";
 import type { Product } from "../../services/chat/types";
 
 type ProductRecommendationsProps = {
@@ -14,9 +14,12 @@ export function ProductRecommendations({
 }: ProductRecommendationsProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
+  const [likedProducts, setLikedProducts] = useState<Set<number>>(new Set());
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
 
   const totalProducts = products?.length || 0;
 
+  console.log(onProductClick);
   const handleNext = () => {
     if (currentIndex < totalProducts - 1) {
       setDirection("next");
@@ -34,14 +37,85 @@ export function ProductRecommendations({
   const currentProduct = products[currentIndex];
   const showPrev = currentIndex > 0;
   const showNext = currentIndex < totalProducts - 1;
+  const isLiked = currentProduct ? likedProducts.has(currentProduct.id) : false;
 
-  const getImageUrl = (imageUrl: string | undefined): string => {
-    if (!imageUrl) return "/placeholder-image.jpg";
-    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-      return imageUrl;
-    }
-    return `https://storage.googleapis.com${imageUrl}`;
+  const toggleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentProduct) return;
+
+    setLikedProducts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(currentProduct.id)) {
+        newSet.delete(currentProduct.id);
+      } else {
+        newSet.add(currentProduct.id);
+      }
+      return newSet;
+    });
   };
+
+  const getImageUrl = (product: Product | undefined): string => {
+    if (!product) return "/placeholder-image.jpg";
+
+    // Check if product has images array (object format)
+    if (product.images && product.images.length > 0) {
+      const firstImage = product.images[0];
+      const imageUrl = firstImage.originalUrl || firstImage.thumbnailUrl;
+      if (imageUrl) {
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+          return imageUrl;
+        }
+        return `https://storage.googleapis.com${imageUrl}`;
+      }
+    }
+
+    // Fallback to image_urls array (string format)
+    if (product.image_urls && product.image_urls.length > 0) {
+      const imageUrl = product.image_urls[0];
+      if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+        return imageUrl;
+      }
+      return `https://storage.googleapis.com${imageUrl}`;
+    }
+
+    return "/placeholder-image.jpg";
+  };
+
+  const handleProductRedirect = (url: string) => {
+    if (!url) return;
+
+    const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
+    if (iframe) {
+      setIsLoadingProduct(true);
+
+      // Remove previous load listener if exists
+      const handleLoad = () => {
+        setIsLoadingProduct(false);
+        iframe.removeEventListener("load", handleLoad);
+      };
+
+      iframe.addEventListener("load", handleLoad);
+      iframe.src = url;
+
+      // Fallback: if iframe doesn't load within 10 seconds, hide loader
+      setTimeout(() => {
+        setIsLoadingProduct(false);
+        iframe.removeEventListener("load", handleLoad);
+      }, 10000);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      const iframe = document.getElementById(
+        "productFrame"
+      ) as HTMLIFrameElement;
+      if (iframe) {
+        iframe.removeEventListener("load", () => setIsLoadingProduct(false));
+      }
+    };
+  }, []);
 
   if (!currentProduct) return null;
 
@@ -56,15 +130,33 @@ export function ProductRecommendations({
         >
           <div
             className="product-card"
-            onClick={() => onProductClick?.(currentProduct)}
+            onClick={() => handleProductRedirect(currentProduct.product_url)}
+            // onClick={(e) => {
+            //   if (currentProduct?.product_url) {
+            //     e.preventDefault();
+            //     e.stopPropagation();
+            //     window.location.replace(currentProduct.product_url);
+            //   } else {
+            //     onProductClick?.(currentProduct);
+            //   }
+            // }}
           >
             <div className="product-content">
               <div className="product-image-container">
                 <img
-                  src={getImageUrl(currentProduct?.image_urls?.[0])}
+                  src={getImageUrl(currentProduct)}
                   alt={currentProduct?.name}
                   className="product-image"
                 />
+                <button
+                  onClick={toggleLike}
+                  className={`product-like-button ${isLiked ? "liked" : ""}`}
+                  aria-label={
+                    isLiked ? "Remove from favorites" : "Add to favorites"
+                  }
+                >
+                  <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
+                </button>
               </div>
               <div className="product-info">
                 <div className="fcw-product-details">
@@ -94,11 +186,19 @@ export function ProductRecommendations({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onProductClick?.(currentProduct);
+                      handleProductRedirect(currentProduct.product_url);
                     }}
                     className="details-button"
+                    disabled={isLoadingProduct}
                   >
-                    Details
+                    {isLoadingProduct ? (
+                      <>
+                        <Loader2 size={16} className="spinning" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Details"
+                    )}
                   </button>
                 </div>
               </div>

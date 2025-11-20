@@ -12607,29 +12607,53 @@
    * This source code is licensed under the ISC license.
    * See the LICENSE file in the root directory of this source tree.
    */
-  const __iconNode$9 = [
+  const __iconNode$b = [
     ["path", { d: "M8 2v4", key: "1cmpym" }],
     ["path", { d: "M16 2v4", key: "4m81vk" }],
     ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
     ["path", { d: "M3 10h18", key: "8toen8" }]
   ];
-  const Calendar$1 = createLucideIcon("calendar", __iconNode$9);
+  const Calendar$1 = createLucideIcon("calendar", __iconNode$b);
   /**
    * @license lucide-react v0.545.0 - ISC
    *
    * This source code is licensed under the ISC license.
    * See the LICENSE file in the root directory of this source tree.
    */
-  const __iconNode$8 = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-  const ChevronLeft = createLucideIcon("chevron-left", __iconNode$8);
+  const __iconNode$a = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+  const ChevronLeft = createLucideIcon("chevron-left", __iconNode$a);
   /**
    * @license lucide-react v0.545.0 - ISC
    *
    * This source code is licensed under the ISC license.
    * See the LICENSE file in the root directory of this source tree.
    */
-  const __iconNode$7 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-  const ChevronRight = createLucideIcon("chevron-right", __iconNode$7);
+  const __iconNode$9 = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+  const ChevronRight = createLucideIcon("chevron-right", __iconNode$9);
+  /**
+   * @license lucide-react v0.545.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */
+  const __iconNode$8 = [
+    [
+      "path",
+      {
+        d: "M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5",
+        key: "mvr1a0"
+      }
+    ]
+  ];
+  const Heart = createLucideIcon("heart", __iconNode$8);
+  /**
+   * @license lucide-react v0.545.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */
+  const __iconNode$7 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+  const LoaderCircle = createLucideIcon("loader-circle", __iconNode$7);
   /**
    * @license lucide-react v0.545.0 - ISC
    *
@@ -18925,7 +18949,7 @@
   const createApiClient = (baseURL, widgetKey) => {
     const instance = axios.create({
       baseURL,
-      timeout: 1e4
+      timeout: 5e4
     });
     instance.interceptors.request.use(
       async (config) => {
@@ -19201,7 +19225,10 @@
   }) {
     const [currentIndex, setCurrentIndex] = reactExports.useState(0);
     const [direction, setDirection] = reactExports.useState("next");
+    const [likedProducts, setLikedProducts] = reactExports.useState(/* @__PURE__ */ new Set());
+    const [isLoadingProduct, setIsLoadingProduct] = reactExports.useState(false);
     const totalProducts = products?.length || 0;
+    console.log(onProductClick);
     const handleNext = () => {
       if (currentIndex < totalProducts - 1) {
         setDirection("next");
@@ -19217,13 +19244,68 @@
     const currentProduct = products[currentIndex];
     const showPrev = currentIndex > 0;
     const showNext = currentIndex < totalProducts - 1;
-    const getImageUrl = (imageUrl) => {
-      if (!imageUrl) return "/placeholder-image.jpg";
-      if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-        return imageUrl;
-      }
-      return `https://storage.googleapis.com${imageUrl}`;
+    const isLiked = currentProduct ? likedProducts.has(currentProduct.id) : false;
+    const toggleLike = (e) => {
+      e.stopPropagation();
+      if (!currentProduct) return;
+      setLikedProducts((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(currentProduct.id)) {
+          newSet.delete(currentProduct.id);
+        } else {
+          newSet.add(currentProduct.id);
+        }
+        return newSet;
+      });
     };
+    const getImageUrl = (product) => {
+      if (!product) return "/placeholder-image.jpg";
+      if (product.images && product.images.length > 0) {
+        const firstImage = product.images[0];
+        const imageUrl = firstImage.originalUrl || firstImage.thumbnailUrl;
+        if (imageUrl) {
+          if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+            return imageUrl;
+          }
+          return `https://storage.googleapis.com${imageUrl}`;
+        }
+      }
+      if (product.image_urls && product.image_urls.length > 0) {
+        const imageUrl = product.image_urls[0];
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+          return imageUrl;
+        }
+        return `https://storage.googleapis.com${imageUrl}`;
+      }
+      return "/placeholder-image.jpg";
+    };
+    const handleProductRedirect = (url2) => {
+      if (!url2) return;
+      const iframe = document.getElementById("productFrame");
+      if (iframe) {
+        setIsLoadingProduct(true);
+        const handleLoad = () => {
+          setIsLoadingProduct(false);
+          iframe.removeEventListener("load", handleLoad);
+        };
+        iframe.addEventListener("load", handleLoad);
+        iframe.src = url2;
+        setTimeout(() => {
+          setIsLoadingProduct(false);
+          iframe.removeEventListener("load", handleLoad);
+        }, 1e4);
+      }
+    };
+    reactExports.useEffect(() => {
+      return () => {
+        const iframe = document.getElementById(
+          "productFrame"
+        );
+        if (iframe) {
+          iframe.removeEventListener("load", () => setIsLoadingProduct(false));
+        }
+      };
+    }, []);
     if (!currentProduct) return null;
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "carousel-wrapper", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "carousel-viewport", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -19234,16 +19316,27 @@
             "div",
             {
               className: "product-card",
-              onClick: () => onProductClick?.(currentProduct),
+              onClick: () => handleProductRedirect(currentProduct.product_url),
               children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "product-content", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "product-image-container", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "img",
-                  {
-                    src: getImageUrl(currentProduct?.image_urls?.[0]),
-                    alt: currentProduct?.name,
-                    className: "product-image"
-                  }
-                ) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "product-image-container", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "img",
+                    {
+                      src: getImageUrl(currentProduct),
+                      alt: currentProduct?.name,
+                      className: "product-image"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: toggleLike,
+                      className: `product-like-button ${isLiked ? "liked" : ""}`,
+                      "aria-label": isLiked ? "Remove from favorites" : "Add to favorites",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(Heart, { size: 20, fill: isLiked ? "currentColor" : "none" })
+                    }
+                  )
+                ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "product-info", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fcw-product-details", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { children: currentProduct.name }),
@@ -19276,10 +19369,14 @@
                     {
                       onClick: (e) => {
                         e.stopPropagation();
-                        onProductClick?.(currentProduct);
+                        handleProductRedirect(currentProduct.product_url);
                       },
                       className: "details-button",
-                      children: "Details"
+                      disabled: isLoadingProduct,
+                      children: isLoadingProduct ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { size: 16, className: "spinning" }),
+                        "Loading..."
+                      ] }) : "Details"
                     }
                   ) })
                 ] })

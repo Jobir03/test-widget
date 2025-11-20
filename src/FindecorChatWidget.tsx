@@ -210,13 +210,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [open, hasMore, fetchingMore, fetching, loadMoreMessages]);
 
-  // const handleProductRedirect = (url: string) => {
-  //   const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
-  //   if (iframe) {
-  //     iframe.src = url;
-  //   }
-  // };
-
   return (
     <div ref={widgetRef}>
       {!open && (

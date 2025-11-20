@@ -36,12 +36,22 @@ export interface Dimensions {
   depth: number | null;
 }
 
+export interface ProductImage {
+  id: string;
+  originalUrl: string;
+  thumbnailUrl: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Product {
   id: number;
   name: string;
   sku: string | null;
   product_url: string;
-  image_urls: string[];
+  image_urls?: string[];
+  images?: ProductImage[];
   warranty: string | null;
   material: string | null;
   roomTypes: string[];
