@@ -7,7 +7,7 @@ type ProductRecommendationsProps = {
   products: Product[];
   onProductClick?: (product: Product) => void;
 };
-
+// ProductRecommendations component
 export function ProductRecommendations({
   products,
   onProductClick,
