@@ -95,22 +95,34 @@ export const createApiClient = (
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return instance(originalRequest);
-      } catch {
-        try {
-          const authData = widgetKey
-            ? await authService.authenticate(widgetKey)
-            : null;
-          if (authData?.access_token) {
-            processQueue(null, authData.access_token);
-            originalRequest.headers.Authorization = `Bearer ${authData.access_token}`;
-            return instance(originalRequest);
+      } catch (refreshError) {
+        // Only retry auth if refresh token failed with 401 (unauthorized)
+        // For other errors (502, CORS, network, etc.), reject immediately
+        const is401Error = 
+          (refreshError as AxiosError)?.response?.status === 401 ||
+          (refreshError as Error)?.message?.includes("401");
+        
+        if (is401Error && widgetKey) {
+          try {
+            const authData = await authService.authenticate(widgetKey);
+            if (authData?.access_token) {
+              processQueue(null, authData.access_token);
+              originalRequest.headers.Authorization = `Bearer ${authData.access_token}`;
+              return instance(originalRequest);
+            }
+          } catch (reauthErr) {
+            processQueue(reauthErr, null);
+            authService.clearToken();
+            console.error("❌ Token refresh and re-auth failed:", reauthErr);
+            return Promise.reject(reauthErr);
           }
-        } catch (reauthErr) {
-          processQueue(reauthErr, null);
-          authService.clearToken();
-          console.error("❌ Token refresh and re-auth failed:", reauthErr);
-          return Promise.reject(reauthErr);
         }
+        
+        // For non-401 errors (502, CORS, network, etc.), reject without retrying auth
+        processQueue(refreshError, null);
+        authService.clearToken();
+        console.error("❌ Token refresh failed (non-401 error):", refreshError);
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }

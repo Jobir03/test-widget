@@ -14,6 +14,7 @@ interface ChatMessagesProps {
   showScheduleForm: boolean;
   onCloseSchedule: () => void;
   widgetKey: string;
+  products?: import("../services/chat/types").Product[];
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -23,6 +24,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   showScheduleForm,
   onCloseSchedule,
   widgetKey,
+  products = [],
 }) => {
   const formatDate = (date: Date) =>
     `${String(date.getDate()).padStart(2, "0")}/${String(
@@ -75,7 +77,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                   <div
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
-                    }`}
+                    } ${msg.isError ? "fcw-error-message" : ""}`}
+                    style={
+                      msg.isError
+                        ? {
+                            backgroundColor: "#fee2e2",
+                            color: "#991b1b",
+                            border: "1px solid #fca5a5",
+                          }
+                        : undefined
+                    }
                   >
                     {msg.text}
                     <span className="fcw fcw-time">
@@ -254,6 +265,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 onSubmitSchedule={async (schedule) => {
                   await sendMessage("", "", schedule);
                 }}
+                products={products}
               />
             )}
           </div>

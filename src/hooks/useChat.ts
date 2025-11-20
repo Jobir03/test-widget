@@ -7,6 +7,7 @@ import type {
   ServerMessage,
   PaginatedResponse,
   SchedulePayload,
+  Product,
 } from "../services/chat/types";
 
 export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
@@ -18,6 +19,10 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const apiRef = useRef<ReturnType<typeof createApiClient> | null>(null);
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [fetchingMore, setFetchingMore] = useState(false);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
 
   const isOnline = () =>
     typeof navigator !== "undefined" ? navigator.onLine : true;
@@ -49,6 +54,8 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const fetchMessages = useCallback(async () => {
     setFetching(true);
     setError(null);
+    setCurrentPage(1);
+    setHasMore(true);
 
     if (!isOnline()) {
       setFetching(false);
@@ -62,33 +69,157 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         apiRef.current = createApiClient(apiBase, widgetKey);
       }
 
-      const data: PaginatedResponse<ServerMessage> = await apiRef.current.get(
-        "/messages",
-        { params: { page: 1, limit: 100 } }
-      );
-      const formatted = data.data.map(mapServerMessage);
-      const firstChoiceMessage = formatted.find((msg) => msg.from === "bot");
-      setQuickReplyOptions(firstChoiceMessage?.options ?? []);
+      const response = await apiRef.current.get<
+        | PaginatedResponse<ServerMessage>
+        | {
+            data: ServerMessage[];
+            total?: number;
+            page?: number;
+            totalPages?: number;
+            meta?: {
+              total: number;
+              perPage: number;
+              currentPage: number;
+              totalPages: number;
+            };
+          }
+      >("/messages", { params: { page: 1, limit: 30 } });
+
+      // Handle both response formats
+      if (
+        !response ||
+        (typeof response === "object" && !("data" in response))
+      ) {
+        throw new Error("Invalid response format");
+      }
+
+      const messagesData = Array.isArray(response.data) ? response.data : [];
+      const formatted = messagesData.map(mapServerMessage);
+
+      // Find the most recent bot message with options
+      const botMessageWithOptions = formatted
+        .filter(
+          (msg) => msg.from === "bot" && msg.options && msg.options.length > 0
+        )
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
+
+      setQuickReplyOptions(botMessageWithOptions?.options ?? []);
       setMessages(formatted);
+      setError(null); // Clear any previous errors
+
+      // Check if there are more pages
+      if ("meta" in response && response.meta) {
+        setHasMore(response.meta.currentPage < response.meta.totalPages);
+      } else if (
+        "page" in response &&
+        "totalPages" in response &&
+        response.page !== undefined &&
+        response.totalPages !== undefined
+      ) {
+        setHasMore(response.page < response.totalPages);
+      } else {
+        setHasMore(false);
+      }
     } catch (err) {
       console.error("Fetch error:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load messages";
       setMessages([]);
       setQuickReplyOptions([]);
-      setError("Failed to load messages");
+      setError(errorMessage);
     } finally {
       setFetching(false);
     }
   }, [apiBase, widgetKey]);
 
+  /** Load more messages (for infinity scroll) */
+  const loadMoreMessages = useCallback(async () => {
+    if (!hasMore || fetchingMore || fetching || !isOnline()) return;
+
+    setFetchingMore(true);
+    try {
+      if (!apiRef.current) {
+        authService.setBaseUrl(apiBase);
+        authService.setWidgetKey(widgetKey);
+        apiRef.current = createApiClient(apiBase, widgetKey);
+      }
+
+      const nextPage = currentPage + 1;
+      const response = await apiRef.current.get<
+        | PaginatedResponse<ServerMessage>
+        | {
+            data: ServerMessage[];
+            total?: number;
+            page?: number;
+            totalPages?: number;
+            meta?: {
+              total: number;
+              perPage: number;
+              currentPage: number;
+              totalPages: number;
+            };
+          }
+      >("/messages", { params: { page: nextPage, limit: 30 } });
+
+      // Handle both response formats
+      if (
+        !response ||
+        (typeof response === "object" && !("data" in response))
+      ) {
+        throw new Error("Invalid response format");
+      }
+
+      const messagesData = Array.isArray(response.data) ? response.data : [];
+      const formatted = messagesData.map(mapServerMessage);
+
+      setMessages((prev) => [...formatted, ...prev]);
+      setCurrentPage(nextPage);
+
+      // Check if there are more pages
+      if ("meta" in response && response.meta) {
+        setHasMore(response.meta.currentPage < response.meta.totalPages);
+      } else if (
+        "page" in response &&
+        "totalPages" in response &&
+        response.page !== undefined &&
+        response.totalPages !== undefined
+      ) {
+        setHasMore(response.page < response.totalPages);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Load more error:", err);
+    } finally {
+      setFetchingMore(false);
+    }
+  }, [apiBase, widgetKey, currentPage, hasMore, fetchingMore, fetching]);
+
   /** Handle new incoming message */
   const onNewMessage = useCallback((msg: ChatMessage) => {
     if (!msg) return;
-    if (msg.type === "single_choice") {
-      setQuickReplyOptions(msg.options ?? []);
+
+    // Update quick reply options if message has options and is from bot
+    // Support both "single_choice" and "input" types (or any type with options)
+    if (msg.from === "bot" && msg.options && msg.options.length > 0) {
+      setQuickReplyOptions(msg.options);
+    } else if (
+      msg.from === "bot" &&
+      (!msg.options || msg.options.length === 0)
+    ) {
+      // Clear options if bot message has no options
+      setQuickReplyOptions([]);
     }
+
+    // Update products if message has products
+    if (msg.products && msg.products.length > 0) {
+      setAvailableProducts(msg.products);
+    }
+
     setMessages((prev) => [...prev, msg]);
     setLoading(false);
-    if (msg.isAdmin || (!msg.isAdmin && msg.schedule)) {
+    // Stop typing animation for bot messages (including error messages) or scheduled messages
+    if (msg.from === "bot" || msg.isAdmin || (!msg.isAdmin && msg.schedule)) {
       setIsTyping(false);
     }
   }, []);
@@ -197,5 +328,9 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     fetching,
     error,
     isTyping,
+    loadMoreMessages,
+    hasMore,
+    fetchingMore,
+    availableProducts,
   };
 }

@@ -142,7 +142,10 @@ const createAuthService = () => {
         const errorData = await response.json().catch(() => ({
           message: "Token refresh failed",
         }));
-        throw new Error(errorData.message || "Token refresh failed");
+        // Preserve status code in error for proper handling
+        const error = new Error(errorData.message || "Token refresh failed") as Error & { status?: number };
+        error.status = response.status;
+        throw error;
       }
 
       const data = await response.json();
@@ -150,7 +153,11 @@ const createAuthService = () => {
       return data.access_token;
     } catch (error) {
       console.error("Token refresh error:", error);
-      clearToken();
+      // Only clear token if it's a 401 error (unauthorized)
+      // For other errors (502, CORS, network), keep token and let caller handle
+      if ((error as Error & { status?: number })?.status === 401) {
+        clearToken();
+      }
       throw error;
     }
   };
@@ -169,7 +176,13 @@ const createAuthService = () => {
       try {
         return await refreshAccessToken();
       } catch (error) {
-        if (currentWidgetKey) {
+        // Only retry auth if refresh token failed with 401 (unauthorized)
+        // For other errors (502, CORS, network), throw without retrying
+        const is401Error = 
+          (error as Error & { status?: number })?.status === 401 ||
+          (error as Error)?.message?.includes("401");
+        
+        if (is401Error && currentWidgetKey) {
           const authData = await authenticate(currentWidgetKey);
           return authData.access_token;
         }

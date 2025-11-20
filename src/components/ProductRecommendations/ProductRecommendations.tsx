@@ -35,6 +35,14 @@ export function ProductRecommendations({
   const showPrev = currentIndex > 0;
   const showNext = currentIndex < totalProducts - 1;
 
+  const getImageUrl = (imageUrl: string | undefined): string => {
+    if (!imageUrl) return "/placeholder-image.jpg";
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+      return imageUrl;
+    }
+    return `https://storage.googleapis.com${imageUrl}`;
+  };
+
   if (!currentProduct) return null;
 
   return (
@@ -53,11 +61,7 @@ export function ProductRecommendations({
             <div className="product-content">
               <div className="product-image-container">
                 <img
-                  src={
-                    currentProduct?.image_urls?.[0]
-                      ? `https://storage.googleapis.com${currentProduct.image_urls[0]}`
-                      : "/placeholder-image.jpg"
-                  }
+                  src={getImageUrl(currentProduct?.image_urls?.[0])}
                   alt={currentProduct?.name}
                   className="product-image"
                 />

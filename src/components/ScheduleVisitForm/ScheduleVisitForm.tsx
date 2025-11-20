@@ -4,23 +4,20 @@ import "react-calendar/dist/Calendar.css";
 import { Calendar as CalIcon } from "lucide-react";
 import "./ScheduleVisitForm.css";
 import { scheduleService, type Branch } from "../../services/chat/schedule";
-import type { SchedulePayload } from "../../services/chat/types";
+import type { SchedulePayload, Product } from "../../services/chat/types";
 
 interface ScheduleVisitFormProps {
   widgetKey: string;
   onClose?: () => void;
   onSubmitSchedule: (payload: SchedulePayload) => Promise<void> | void;
+  products?: Product[];
 }
-
-const MOCK_PRODUCT = {
-  id: "ab6c4cca-8d3b-4e0b-bc6b-cd2ae0c06f95",
-  name: "2' 2 x 3' 11 Pirate Whimsy Kids Runner Rug",
-};
 
 export default function ScheduleVisitForm({
   widgetKey,
   onClose,
   onSubmitSchedule,
+  products = [],
 }: ScheduleVisitFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,8 +26,20 @@ export default function ScheduleVisitForm({
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [loadingBranches, setLoadingBranches] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState(MOCK_PRODUCT.id);
+  const [selectedProductId, setSelectedProductId] = useState(
+    products.length > 0 ? products[0].id.toString() : ""
+  );
   const [submitting, setSubmitting] = useState(false);
+
+  // Update selectedProductId when products change
+  useEffect(() => {
+    if (
+      products.length > 0 &&
+      !products.find((p) => p.id.toString() === selectedProductId)
+    ) {
+      setSelectedProductId(products[0].id.toString());
+    }
+  }, [products, selectedProductId]);
 
   useEffect(() => {
     let isActive = true;
@@ -166,8 +175,18 @@ export default function ScheduleVisitForm({
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
                   className="schedule-select"
+                  disabled={products.length === 0}
                 >
-                  <option value={MOCK_PRODUCT.id}>{MOCK_PRODUCT.name}</option>
+                  <option value="">
+                    {products.length === 0
+                      ? "No products available"
+                      : "Choose a product"}
+                  </option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id.toString()}>
+                      {product.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

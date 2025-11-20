@@ -91,14 +91,14 @@ export const createChatService = (widgetKey: string) => {
       return;
     }
 
-    // ✅ agar 401 yoki 403 bo‘lsa, faqat bir marta refresh qilamiz
-    if (
-      (error.message.includes("401") || error.message.includes("403")) &&
-      !hasTriedRefresh
-    ) {
+    // ✅ faqat 401 (unauthorized) bo'lsa, refresh token qilamiz
+    // Boshqa xatolarda (502, CORS, network) refresh qilmaymiz
+    const is401Error = error.message.includes("401");
+
+    if (is401Error && !hasTriedRefresh) {
       hasTriedRefresh = true;
       try {
-        console.log("Attempting to refresh token...");
+        console.log("Attempting to refresh token (401 error)...");
         const newToken = await authService.refreshAccessToken();
 
         if (socket) {
@@ -113,41 +113,27 @@ export const createChatService = (widgetKey: string) => {
         return;
       } catch (refreshError) {
         console.error("❌ Token refresh failed:", refreshError);
-        authService.clearToken();
+        // Only clear token if refresh also failed with 401
+        const isRefresh401 =
+          (refreshError as Error & { status?: number })?.status === 401 ||
+          (refreshError as Error)?.message?.includes("401");
+        if (isRefresh401) {
+          authService.clearToken();
+        }
         onConnectionStateChange?.(false);
         return;
       }
     }
 
+    // For non-401 errors, don't try refresh token
     reconnectAttempts++;
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       console.error("Max reconnection attempts reached — stopping");
       onConnectionStateChange?.(false);
-
-      // agar refresh hali qilinmagan bo‘lsa, bir marta refresh qilamiz
-      if (!hasTriedRefresh) {
-        hasTriedRefresh = true;
-        try {
-          const newAccessToken = await authService.refreshAccessToken();
-          console.log("🔁 Token successfully refreshed after retries");
-          if (socket) {
-            socket.io.opts.extraHeaders = {
-              ...socket.io.opts.extraHeaders,
-              Authorization: `Bearer ${newAccessToken}`,
-            };
-          }
-          reconnectAttempts = 0;
-          await connectWithRetry();
-        } catch (refreshError) {
-          console.error("Token refresh after retries failed:", refreshError);
-          authService.clearToken();
-        }
-      }
-
       return;
     }
 
-    // Reconnect backoff
+    // Reconnect backoff (only for non-401 errors that might be temporary)
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
     console.log(
       `Retrying connection in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`
@@ -163,6 +149,41 @@ export const createChatService = (widgetKey: string) => {
     socket.on("newMessage", (data: ServerMessage) => {
       onMessage?.(transformServerMessage(data));
     });
+    socket.on(
+      "errorMessage",
+      (data: { message?: string } | [string, { message?: string }]) => {
+        // Handle both array format ["errorMessage", {message: "..."}] and object format {message: "..."}
+        let errorMessage: string;
+        if (Array.isArray(data)) {
+          const secondElement = data[1];
+          if (typeof secondElement === "string") {
+            errorMessage = secondElement;
+          } else if (
+            secondElement &&
+            typeof secondElement === "object" &&
+            "message" in secondElement
+          ) {
+            errorMessage = secondElement.message || "Xatolik yuz berdi";
+          } else {
+            errorMessage = "Xatolik yuz berdi";
+          }
+        } else {
+          errorMessage = data?.message || "Xatolik yuz berdi";
+        }
+
+        const errorChatMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          from: "bot",
+          text: errorMessage,
+          images: [],
+          products: [],
+          timestamp: new Date(),
+          isAdmin: true,
+          isError: true,
+        };
+        onMessage?.(errorChatMessage);
+      }
+    );
   };
 
   const cleanListeners = () => {
@@ -171,6 +192,7 @@ export const createChatService = (widgetKey: string) => {
     socket.off("disconnect", handleDisconnect);
     socket.off("connect_error", handleConnectError);
     socket.off("newMessage");
+    socket.off("errorMessage");
   };
 
   const connectWithRetry = async (): Promise<void> => {

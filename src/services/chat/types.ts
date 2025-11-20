@@ -71,6 +71,7 @@ export interface ChatMessage {
   products: Product[];
   timestamp: Date;
   isAdmin?: boolean;
+  isError?: boolean;
   user?: {
     id: string;
     name?: string;

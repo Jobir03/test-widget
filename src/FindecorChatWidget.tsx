@@ -5,6 +5,7 @@ import {
   MessageCircle,
   Minimize2,
   Paperclip,
+  RefreshCw,
   Send,
   X,
 } from "lucide-react";
@@ -40,6 +41,10 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     fetching,
     error,
     isTyping,
+    loadMoreMessages,
+    hasMore,
+    fetchingMore,
+    availableProducts,
   } = useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
@@ -167,9 +172,43 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   useEffect(() => {
     if (open && messagesContainerRef.current) {
       const container = messagesContainerRef.current;
-      container.scrollTop = container.scrollHeight;
+      // Only auto-scroll to bottom if user is near the bottom (within 100px)
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <
+        100;
+      if (isNearBottom || messages.length <= 30) {
+        container.scrollTop = container.scrollHeight;
+      }
     }
   }, [messages, open]);
+
+  // Infinity scroll handler
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !open) return;
+
+    const handleScroll = () => {
+      // Load more when scrolled to top (within 50px)
+      if (container.scrollTop < 50 && hasMore && !fetchingMore && !fetching) {
+        const previousScrollHeight = container.scrollHeight;
+        const previousScrollTop = container.scrollTop;
+
+        loadMoreMessages().then(() => {
+          // Preserve scroll position after loading more messages
+          requestAnimationFrame(() => {
+            if (container) {
+              const newScrollHeight = container.scrollHeight;
+              const scrollDifference = newScrollHeight - previousScrollHeight;
+              container.scrollTop = previousScrollTop + scrollDifference;
+            }
+          });
+        });
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [open, hasMore, fetchingMore, fetching, loadMoreMessages]);
 
   // const handleProductRedirect = (url: string) => {
   //   const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
@@ -246,12 +285,49 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 color: "#721c24",
                 padding: "12px 16px",
                 borderBottom: "1px solid #f5c6cb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "12px",
               }}
             >
-              {error}
+              <span style={{ flex: 1 }}>{error}</span>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  backgroundColor: "#dc3545",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                }}
+                title="Reload page"
+              >
+                <RefreshCw size={16} />
+                Reload
+              </button>
             </div>
           )}
           <div ref={messagesContainerRef} className="fcw fcw-messages">
+            {fetchingMore && (
+              <div
+                className="fcw fcw-loading-more"
+                style={{
+                  textAlign: "center",
+                  padding: "12px",
+                  color: "#666",
+                  fontSize: "14px",
+                }}
+              >
+                Loading more messages...
+              </div>
+            )}
             <ChatMessages
               messages={messages}
               fetching={fetching}
@@ -259,6 +335,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               showScheduleForm={showScheduleForm}
               onCloseSchedule={() => setShowScheduleForm(false)}
               widgetKey={widgetKey}
+              products={availableProducts}
             />
             {isTyping && (
               <div className="fcw fcw-typing-row">
