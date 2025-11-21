@@ -16,12 +16,51 @@
   max-width: 100%;
   width: 100%;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: visible;
+}
+
+.schedule-close-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6b7280;
+  z-index: 100;
+  padding: 0;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.schedule-close-button:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+.schedule-close-button:active {
+  transform: scale(0.95);
 }
 
 .schedule-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+}
+
+/* Add top padding to form when close button exists */
+.schedule-form.has-close-button {
+  padding-top: 20px;
 }
 
 .schedule-row {

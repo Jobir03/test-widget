@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { Calendar as CalIcon } from "lucide-react";
+import { Calendar as CalIcon, X } from "lucide-react";
 import "./ScheduleVisitForm.css";
 import { scheduleService, type Branch } from "../../services/chat/schedule";
 import type { SchedulePayload, Product } from "../../services/chat/types";
@@ -26,19 +26,24 @@ export default function ScheduleVisitForm({
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [loadingBranches, setLoadingBranches] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState(
-    products.length > 0 ? products[0].id.toString() : ""
-  );
+  const [selectedProductId, setSelectedProductId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Update selectedProductId when products change
+  // Clear selection when products change (product selection is optional, no auto-select)
   useEffect(() => {
-    if (
-      products.length > 0 &&
-      !products.find((p) => p.id.toString() === selectedProductId)
-    ) {
-      setSelectedProductId(products[0].id.toString());
+    // If current selection is not in the new products list, clear it
+    if (selectedProductId && products.length > 0) {
+      const productExists = products.find(
+        (p) => p.id.toString() === selectedProductId
+      );
+      if (!productExists) {
+        setSelectedProductId("");
+      }
+    } else if (products.length === 0) {
+      // If no products available, clear selection
+      setSelectedProductId("");
     }
+    // Don't auto-select first product - keep it empty by default
   }, [products, selectedProductId]);
 
   useEffect(() => {
@@ -70,6 +75,8 @@ export default function ScheduleVisitForm({
       alert("Iltimos, barcha maydonlarni to'ldiring!");
       return;
     }
+
+    // Product is optional, so we don't require it
     try {
       setSubmitting(true);
 
@@ -80,7 +87,7 @@ export default function ScheduleVisitForm({
 
       await onSubmitSchedule({
         branchId: selectedBranchId,
-        productId: selectedProductId,
+        productId: selectedProductId || "", // Product is optional
         bookedTime: isoDate.toISOString(),
         firstName: name,
         lastName: "",
@@ -122,7 +129,17 @@ export default function ScheduleVisitForm({
     <>
       <div className="schedule-container fcw">
         <div className="schedule-card fcw">
-          <div className="schedule-form">
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="schedule-close-button"
+              aria-label="Close schedule form"
+              title="Close"
+            >
+              <X size={20} />
+            </button>
+          )}
+          <div className={`schedule-form ${onClose ? "has-close-button" : ""}`}>
             <div className="schedule-row">
               <div className="schedule-form-group">
                 <label className="schedule-label">Name</label>
@@ -170,7 +187,7 @@ export default function ScheduleVisitForm({
               </div>
 
               <div className="schedule-form-group">
-                <label className="schedule-label">Product</label>
+                <label className="schedule-label">Product (Optional)</label>
                 <select
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
@@ -180,7 +197,7 @@ export default function ScheduleVisitForm({
                   <option value="">
                     {products.length === 0
                       ? "No products available"
-                      : "Choose a product"}
+                      : "Choose a product "}
                   </option>
                   {products.map((product) => (
                     <option key={product.id} value={product.id.toString()}>
@@ -239,8 +256,8 @@ export default function ScheduleVisitForm({
                 !email ||
                 !date ||
                 !time ||
-                !selectedBranchId ||
-                !selectedProductId
+                !selectedBranchId
+                // Product is optional, so we don't require selectedProductId
               }
               className="schedule-submit-button"
             >

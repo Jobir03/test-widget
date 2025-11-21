@@ -107,6 +107,19 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       setMessages(formatted);
       setError(null); // Clear any previous errors
 
+      // Extract products from messages (newest first, find first message with products)
+      // This handles reload case - search from newest to oldest
+      const messageWithProducts = formatted
+        .filter((msg) => msg.products && msg.products.length > 0)
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
+      
+      if (messageWithProducts && messageWithProducts.products) {
+        setAvailableProducts(messageWithProducts.products);
+      } else {
+        // If no products found, clear the state
+        setAvailableProducts([]);
+      }
+
       // Check if there are more pages
       if ("meta" in response && response.meta) {
         setHasMore(response.meta.currentPage < response.meta.totalPages);
@@ -211,7 +224,8 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       setQuickReplyOptions([]);
     }
 
-    // Update products if message has products
+    // Update products if message has products (from socket)
+    // Always update to the latest products from socket
     if (msg.products && msg.products.length > 0) {
       setAvailableProducts(msg.products);
     }

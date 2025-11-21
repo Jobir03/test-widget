@@ -66,7 +66,7 @@ export interface Product {
 
 export interface SchedulePayload {
   branchId: string;
-  productId: string;
+  productId?: string; // Optional - product selection is optional
   bookedTime: string;
   firstName: string;
   lastName: string;
