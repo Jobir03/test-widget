@@ -269,44 +269,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               {offlineMessage}
             </div>
           )}
-          {error && isOnline && (
-            <div
-              className="fcw fcw-quick-replies"
-              role="alert"
-              style={{
-                backgroundColor: "#f8d7da",
-                color: "#721c24",
-                padding: "12px 16px",
-                borderBottom: "1px solid #f5c6cb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "12px",
-              }}
-            >
-              <span style={{ flex: 1 }}>{error}</span>
-              <button
-                onClick={() => window.location.reload()}
-                style={{
-                  backgroundColor: "#dc3545",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "4px",
-                  padding: "6px 12px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                }}
-                title="Reload page"
-              >
-                <RefreshCw size={16} />
-                Reload
-              </button>
-            </div>
-          )}
           <div ref={messagesContainerRef} className="fcw fcw-messages">
             {fetchingMore && (
               <div
@@ -338,6 +300,44 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     <span className="fcw-typing-dot" />
                     <span className="fcw-typing-dot" />
                   </span>
+                </div>
+              </div>
+            )}
+            {error && isOnline && (
+              <div className="fcw fcw-message">
+                <div
+                  className="fcw fcw-bubble bot"
+                  style={{
+                    backgroundColor: "#f8d7da",
+                    color: "#721c24",
+                    border: "1px solid #f5c6cb",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <span>{error}</span>
+                  <button
+                    onClick={() => window.location.reload()}
+                    style={{
+                      alignSelf: "flex-start",
+                      backgroundColor: "#dc3545",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "4px",
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                    }}
+                    title="Reload page"
+                  >
+                    <RefreshCw size={14} />
+                    Reload
+                  </button>
                 </div>
               </div>
             )}
