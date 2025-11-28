@@ -12,7 +12,7 @@
 .schedule-card {
   background-color: white;
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   max-width: 100%;
   width: 100%;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
@@ -22,10 +22,10 @@
 
 .schedule-close-button {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #f3f4f6;
   border: 1px solid #e5e7eb;
@@ -54,19 +54,19 @@
 .schedule-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   position: relative;
 }
 
 /* Add top padding to form when close button exists */
 .schedule-form.has-close-button {
-  padding-top: 20px;
+  padding-top: 16px;
 }
 
 .schedule-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .schedule-company-info {
@@ -90,16 +90,16 @@
 }
 
 .schedule-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #111827;
 }
 
 .schedule-input {
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;
   outline: none;
   background-color: #f9fafb;
   color: #4b5563;
@@ -144,10 +144,10 @@
 }
 
 .schedule-select {
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;
   outline: none;
   background-color: #f9fafb;
   color: #4b5563;
@@ -169,22 +169,28 @@
   border-color: #f87171 !important;
   background-color: #fee2e2 !important;
 }
+.schedule-calendar-wrapper {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px;
+  background-color: #fafafa;
+}
 
 .schedule-submit-button {
-  padding: 9px 14px;
+  padding: 7px 12px;
   background-color: #111827;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   transition: background-color 0.2s;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .schedule-submit-button:hover:not(:disabled) {

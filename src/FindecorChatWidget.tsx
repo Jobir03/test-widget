@@ -14,6 +14,7 @@ import {
 import { useChat } from "./hooks/useChat";
 import { createApiClient, type ApiClient } from "./services/api/apiClient";
 import ChatMessages from "./components/ChatMessages";
+import VoiceTalkPanel from "./components/VoiceTalkPanel/VoiceTalkPanel";
 import authService from "./services/chat/auth";
 import type { FindecorChatWidgetProps } from "./types/FindecorChatWidget.types";
 import avatarImage from "./assets/images/chat-avatar.jpg";
@@ -302,7 +303,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   }, [open, hasMore, fetchingMore, fetching, loadMoreMessages]);
 
   return (
-    <div ref={widgetRef}>
+    <div ref={widgetRef} className="fcw-root">
       {!open && (
         <button
           className={`fcw fcw-launcher ${positionClass}`}
@@ -330,233 +331,215 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       )}
 
       {open && (
-        <div
-          className={`fcw fcw-container ${positionClass} ${sizeClass} ${
-            fullscreen ? "fullscreen" : ""
-          }`}
-          style={{
-            ...(fullscreen ? {} : { borderRadius }),
-          }}
-        >
-          <div className="fcw-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div className="fcw-message-icon">
-                <MessageCircle size={22} />
-              </div>
-              <div className="fcw-title">
-                <h2>{headerText}</h2>
-                <span>{isOnline ? "Online" : "Offline"}</span>
-              </div>
-            </div>
-            <div className="fcw-actions">
-              <button
-                onClick={() => setFullscreen((v) => !v)}
-                title="Toggle fullscreen"
-              >
-                {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-              </button>
-              <button onClick={() => setOpen(false)} title="Close">
-                <X size={20} />
-              </button>
-            </div>
-          </div>
-
-          {!isOnline && (
-            <div
-              className="fcw fcw-quick-replies"
-              role="alert"
-              style={{
-                backgroundColor: "#fff3cd",
-                color: "#856404",
-                fontSize: "14px",
-                padding: "12px 16px",
-                borderBottom: "1px solid #ffc107",
-              }}
-            >
-              {offlineMessage}
-            </div>
-          )}
-          <div ref={messagesContainerRef} className="fcw fcw-messages">
-            {fetchingMore && (
-              <div
-                className="fcw fcw-loading-more"
-                style={{
-                  textAlign: "center",
-                  padding: "12px",
-                  color: "#666",
-                  fontSize: "14px",
-                }}
-              >
-                Loading more messages...
-              </div>
-            )}
-            <ChatMessages
-              messages={messages}
-              fetching={fetching}
-              sendMessage={sendMessage}
-              sendHomeGeneration={sendHomeGeneration}
-              showScheduleForm={showScheduleForm}
-              onCloseSchedule={() => {
-                setShowScheduleForm(false);
-              }}
-              showCallMeForm={showCallMeForm}
-              onCloseCallMe={() => {
-                setShowCallMeForm(false);
-              }}
-              widgetKey={widgetKey}
-              isTyping={isTyping}
-              isGeneratingImage={isGeneratingImage}
-              onGeneratingImageChange={setIsGeneratingImage}
-              loadingStates={loadingStates}
-              onScrollToBottom={() => {
-                if (messagesContainerRef.current) {
-                  messagesContainerRef.current.scrollTop =
-                    messagesContainerRef.current.scrollHeight;
-                }
-              }}
-            />
-            {error && isOnline && (
-              <div className="fcw fcw-message">
-                <div
-                  className="fcw fcw-bubble bot"
-                  style={{
-                    backgroundColor: "#f8d7da",
-                    color: "#721c24",
-                    border: "1px solid #f5c6cb",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
-                  <span>{error}</span>
-                  <button
-                    onClick={() => window.location.reload()}
+        <>
+          <div className="fcw-overlay" onClick={() => setOpen(false)} />
+          <div
+            className={`fcw-dual-layout ${fullscreen ? "fullscreen" : ""} `}
+            style={{ borderRadius: borderRadius || undefined }}
+          >
+            <VoiceTalkPanel />
+            <div className="fcw-widget-shell">
+              <div className={`fcw fcw-container  ${sizeClass} `}>
+                <div className="fcw-header">
+                  <div
                     style={{
-                      alignSelf: "flex-start",
-                      backgroundColor: "#dc3545",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "4px",
-                      padding: "6px 12px",
-                      cursor: "pointer",
-                      display: "inline-flex",
+                      display: "flex",
                       alignItems: "center",
-                      gap: "6px",
-                      fontSize: "13px",
-                      fontWeight: 500,
+                      gap: "8px",
                     }}
-                    title="Reload page"
                   >
-                    <RefreshCw size={14} />
-                    Reload
+                    <div className="fcw-message-icon">
+                      <MessageCircle size={22} />
+                    </div>
+                    <div className="fcw-title">
+                      <h2>{headerText}</h2>
+                      <span>{isOnline ? "Online" : "Offline"}</span>
+                    </div>
+                  </div>
+                  <div className="fcw-actions">
+                    <button
+                      onClick={() => setFullscreen((v) => !v)}
+                      title="Toggle fullscreen"
+                    >
+                      {fullscreen ? (
+                        <Minimize2 size={18} />
+                      ) : (
+                        <Maximize2 size={18} />
+                      )}
+                    </button>
+                    <button onClick={() => setOpen(false)} title="Close">
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {!isOnline && (
+                  <div
+                    className="fcw fcw-quick-replies"
+                    role="alert"
+                    style={{
+                      backgroundColor: "#fff3cd",
+                      color: "#856404",
+                      fontSize: "14px",
+                      padding: "12px 16px",
+                      borderBottom: "1px solid #ffc107",
+                    }}
+                  >
+                    {offlineMessage}
+                  </div>
+                )}
+                <div ref={messagesContainerRef} className="fcw fcw-messages">
+                  {fetchingMore && (
+                    <div
+                      className="fcw fcw-loading-more"
+                      style={{
+                        textAlign: "center",
+                        padding: "12px",
+                        color: "#666",
+                        fontSize: "14px",
+                      }}
+                    >
+                      Loading more messages...
+                    </div>
+                  )}
+                  <ChatMessages
+                    messages={messages}
+                    fetching={fetching}
+                    sendMessage={sendMessage}
+                    showScheduleForm={showScheduleForm}
+                    onCloseSchedule={() => setShowScheduleForm(false)}
+                    widgetKey={widgetKey}
+                    products={[]}
+                  />
+                  {isTyping && (
+                    <div className="fcw fcw-typing-row">
+                      <div className="fcw fcw-bubble bot fcw-typing-bubble">
+                        <span className="fcw fcw-typing">
+                          <span className="fcw-typing-dot" />
+                          <span className="fcw-typing-dot" />
+                          <span className="fcw-typing-dot" />
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {error && isOnline && (
+                    <div className="fcw fcw-message">
+                      <div
+                        className="fcw fcw-bubble bot"
+                        style={{
+                          backgroundColor: "#f8d7da",
+                          color: "#721c24",
+                          border: "1px solid #f5c6cb",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                        }}
+                      >
+                        <span>{error}</span>
+                        <button
+                          onClick={() => window.location.reload()}
+                          style={{
+                            alignSelf: "flex-start",
+                            backgroundColor: "#dc3545",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "4px",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                          }}
+                          title="Reload page"
+                        >
+                          <RefreshCw size={14} />
+                          Reload
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="fcw fcw-quick-replies">
+                  {quickReplyOptions.length > 0 && (
+                    <div className="fcw-chips-container">
+                      {quickReplyOptions.map((label) => (
+                        <button
+                          key={label}
+                          className="fcw fcw-chip"
+                          onClick={() => {
+                            if (!isOnline || loading || isUploading) return;
+                            sendMessage(label, "");
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    className="schedule-visit"
+                    onClick={() => setShowScheduleForm(true)}
+                  >
+                    <Calendar size={16} />
+                    Schedule Visit
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
-          <div className="fcw fcw-quick-replies">
-            {quickReplyOptions.length > 0 && (
-              <div className="fcw-chips-container">
-                {quickReplyOptions.map((label) => (
-                  <button
-                    key={label}
-                    className="fcw fcw-chip"
-                    onClick={() => {
-                      if (!isOnline || loading || isUploading) return;
-                      sendMessage(label, "");
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                className="schedule-visit"
-                onClick={() => {
-                  // Send "Showroom Visit" message to chat
-                  sendMessage("Showroom Visit");
-                  // Scroll to bottom after sending message
-                  if (messagesContainerRef.current) {
-                    setTimeout(() => {
-                      if (messagesContainerRef.current) {
-                        messagesContainerRef.current.scrollTop =
-                          messagesContainerRef.current.scrollHeight;
+                <div className="fcw fcw-input">
+                  {selectedFile && (
+                    <div className="fcw sellect-file">
+                      <span>{selectedFile.name}</span>
+                      <button
+                        onClick={removeFile}
+                        className="fcw-remove-file-btn"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="fcw-input-container">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*"
+                      className="fcw-file-input-hidden"
+                      id="file-upload"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className={`fcw-file-upload-label${
+                        !isOnline || loading || isUploading ? " disabled" : ""
+                      }`}
+                    >
+                      <Paperclip size={20} />
+                    </label>
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                      placeholder={inputPlaceholder}
+                      disabled={loading || isUploading || !isOnline}
+                    />
+                    <button
+                      onClick={handleSend}
+                      disabled={
+                        !isOnline ||
+                        ((loading || isUploading) &&
+                          !input.trim() &&
+                          !selectedFile)
                       }
-                    }, 100);
-                  }
-                }}
-              >
-                <Calendar size={16} />
-                Schedule Visit
-              </button>
-              <button
-                className="schedule-visit"
-                onClick={() => {
-                  setShowCallMeForm(true);
-                  // Scroll to bottom when call me form opens
-                  if (messagesContainerRef.current) {
-                    setTimeout(() => {
-                      if (messagesContainerRef.current) {
-                        messagesContainerRef.current.scrollTop =
-                          messagesContainerRef.current.scrollHeight;
-                      }
-                    }, 100);
-                  }
-                }}
-              >
-                <Phone size={16} />
-                Call me
-              </button>
+                    >
+                      {loading || isUploading ? "..." : <Send size={18} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="fcw fcw-input">
-            {selectedFile && (
-              <div className="fcw sellect-file">
-                <span>{selectedFile.name}</span>
-                <button onClick={removeFile} className="fcw-remove-file-btn">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            )}
-            <div className="fcw-input-container">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="fcw-file-input-hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className={`fcw-file-upload-label${
-                  !isOnline || loading || isUploading ? " disabled" : ""
-                }`}
-              >
-                <Paperclip size={20} />
-              </label>
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder={inputPlaceholder}
-                disabled={loading || isUploading || !isOnline}
-              />
-              <button
-                onClick={handleSend}
-                disabled={
-                  !isOnline ||
-                  ((loading || isUploading) && !input.trim() && !selectedFile)
-                }
-              >
-                {loading || isUploading ? "..." : <Send size={18} />}
-              </button>
-            </div>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

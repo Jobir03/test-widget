@@ -95,6 +95,30 @@ export const createChatService = (widgetKey: string) => {
     }
   };
 
+  // Check if error is a network/connection error (not 401)
+  const isNetworkError = (error: Error): boolean => {
+    // Check if browser is offline
+    if (!isOnline()) return true;
+
+    // Check error message for network-related keywords
+    const errorMessage = error?.message?.toLowerCase() || "";
+    const networkKeywords = [
+      "network",
+      "timeout",
+      "cors",
+      "connection",
+      "refused",
+      "failed to fetch",
+      "networkerror",
+      "502",
+      "503",
+      "504",
+      "browser offline",
+    ];
+
+    return networkKeywords.some((keyword) => errorMessage.includes(keyword));
+  };
+
   const handleConnectError = async (error: Error) => {
     console.error("Connection error:", error);
 
@@ -103,9 +127,15 @@ export const createChatService = (widgetKey: string) => {
       onConnectionStateChange?.(false);
       return;
     }
+
+    // Check if it's a network error
+    const isNetworkErr = isNetworkError(error);
+
+    // ✅ faqat 401 (unauthorized) bo'lsa va network error bo'lmasa, refresh token qilamiz
+    // Network xatolarda (502, CORS, network) refresh qilmaymiz
     const is401Error = error.message.includes("401");
 
-    if (is401Error && !hasTriedRefresh) {
+    if (is401Error && !isNetworkErr && !hasTriedRefresh) {
       hasTriedRefresh = true;
       try {
         console.log("Attempting to refresh token (401 error)...");
@@ -123,10 +153,17 @@ export const createChatService = (widgetKey: string) => {
         return;
       } catch (refreshError) {
         console.error("❌ Token refresh failed:", refreshError);
+        const refreshErrorWithStatus = refreshError as Error & {
+          status?: number;
+        };
+
+        // Only clear token if refresh also failed with 401 AND not a network error
         const isRefresh401 =
-          (refreshError as Error & { status?: number })?.status === 401 ||
+          refreshErrorWithStatus?.status === 401 ||
           (refreshError as Error)?.message?.includes("401");
-        if (isRefresh401) {
+        const isRefreshNetworkErr = isNetworkError(refreshError as Error);
+
+        if (isRefresh401 && !isRefreshNetworkErr) {
           authService.clearToken();
         }
         onConnectionStateChange?.(false);
@@ -239,12 +276,17 @@ export const createChatService = (widgetKey: string) => {
 
   const connectWithRetry = async (): Promise<void> => {
     if (isConnecting) return;
+
+    // Don't attempt connection if browser is offline
+    if (!isOnline()) {
+      console.warn("Browser is offline, skipping connection attempt");
+      onConnectionStateChange?.(false);
+      return;
+    }
+
     isConnecting = true;
 
     try {
-      if (!isOnline()) {
-        throw new Error("Browser offline");
-      }
       const token = await getAuthToken(false);
       if (!socket) throw new Error("Socket not initialized");
 
