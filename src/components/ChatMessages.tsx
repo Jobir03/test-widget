@@ -146,6 +146,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                           }}
                         />
                       ))}
+                      {msg?.description}
                     </div>
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
