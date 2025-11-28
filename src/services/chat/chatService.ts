@@ -90,9 +90,6 @@ export const createChatService = (widgetKey: string) => {
       onConnectionStateChange?.(false);
       return;
     }
-
-    // ✅ faqat 401 (unauthorized) bo'lsa, refresh token qilamiz
-    // Boshqa xatolarda (502, CORS, network) refresh qilmaymiz
     const is401Error = error.message.includes("401");
 
     if (is401Error && !hasTriedRefresh) {
@@ -113,7 +110,6 @@ export const createChatService = (widgetKey: string) => {
         return;
       } catch (refreshError) {
         console.error("❌ Token refresh failed:", refreshError);
-        // Only clear token if refresh also failed with 401
         const isRefresh401 =
           (refreshError as Error & { status?: number })?.status === 401 ||
           (refreshError as Error)?.message?.includes("401");
@@ -125,7 +121,6 @@ export const createChatService = (widgetKey: string) => {
       }
     }
 
-    // For non-401 errors, don't try refresh token
     reconnectAttempts++;
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       console.error("Max reconnection attempts reached — stopping");
@@ -133,7 +128,6 @@ export const createChatService = (widgetKey: string) => {
       return;
     }
 
-    // Reconnect backoff (only for non-401 errors that might be temporary)
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
     console.log(
       `Retrying connection in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`
@@ -307,10 +301,37 @@ export const createChatService = (widgetKey: string) => {
     });
   };
 
+  const sendHomeGeneration = (
+    homeImageUrl: string,
+    productImageUrl: string,
+    prompt: string = ""
+  ): Promise<void> => {
+    if (!socket) throw new Error("Socket not initialized");
+
+    return new Promise<void>((resolve, reject) => {
+      socket!.emit(
+        "homeGeneration",
+        {
+          home_image_url: homeImageUrl,
+          product_image_url: productImageUrl,
+          prompt: prompt,
+        },
+        (res: { error?: string } | null) => {
+          if (res?.error) {
+            if (res.error.includes("auth")) authService.clearToken();
+            return reject(new Error(res.error));
+          }
+          resolve();
+        }
+      );
+    });
+  };
+
   return {
     connectSocket,
     disconnectSocket,
     sendMessage,
+    sendHomeGeneration,
     isConnected: () => Boolean(socket?.connected),
     getSocketId: () => socket?.id ?? null,
     setConnectionStateHandler: (cb: ConnectionStateHandler) =>

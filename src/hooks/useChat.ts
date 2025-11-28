@@ -46,6 +46,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         }
       : undefined,
     type: m.type,
+    description: m.description ?? null,
     options: m.options ?? [],
     schedule: m.schedule ?? null,
   });
@@ -112,7 +113,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       const messageWithProducts = formatted
         .filter((msg) => msg.products && msg.products.length > 0)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
-      
+
       if (messageWithProducts && messageWithProducts.products) {
         setAvailableProducts(messageWithProducts.products);
       } else {
@@ -334,10 +335,34 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     }
   };
 
+  const sendHomeGeneration = async (
+    homeImageUrl: string,
+    productImageUrl: string,
+    prompt: string = ""
+  ) => {
+    if (!chatService.current) return;
+
+    try {
+      setIsTyping(true);
+      await chatService.current.sendHomeGeneration(
+        homeImageUrl,
+        productImageUrl,
+        prompt
+      );
+      // Typing animation bot javob kutayotganda ko'rsatiladi
+      // Bot javob kelganda onNewMessage orqali setIsTyping(false) qilinadi
+    } catch (error) {
+      console.error("Failed to send home generation:", error);
+      setIsTyping(false);
+      throw error;
+    }
+  };
+
   return {
     messages,
     quickReplyOptions,
     sendMessage,
+    sendHomeGeneration,
     loading,
     fetching,
     error,

@@ -489,61 +489,6 @@
   cursor: not-allowed;
 }
 
-.fcw-typing {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 0;
-}
-
-.fcw-typing-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  margin-top: 3px;
-}
-
-.fcw-typing-bubble {
-  background: #f3f4f6;
-  border-radius: 999px;
-  padding: 4px 8px;
-  border: 1px solid #e5e7eb;
-  box-shadow: none;
-}
-
-.fcw-typing-dot {
-  width: 7px;
-  height: 7px;
-  background: #d1d5db;
-  border-radius: 50%;
-  animation: fcw-bounce 1.4s infinite ease-in-out;
-}
-
-.fcw-typing-dot:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.fcw-typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.fcw-typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes fcw-bounce {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.6;
-  }
-  30% {
-    transform: translateY(-8px);
-    opacity: 1;
-  }
-}
-
 .fcw-input > div:first-child span {
   flex: 1;
   overflow: hidden;

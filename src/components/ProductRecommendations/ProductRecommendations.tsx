@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./ProductRecommendations.css";
 import { ChevronLeft, ChevronRight, Heart, Loader2 } from "lucide-react";
 import type { Product } from "../../services/chat/types";
@@ -6,16 +6,32 @@ import type { Product } from "../../services/chat/types";
 type ProductRecommendationsProps = {
   products: Product[];
   onProductClick?: (product: Product) => void;
+  messageText?: string;
+  sendHomeGeneration?: (
+    homeImageUrl: string,
+    productImageUrl: string,
+    prompt?: string
+  ) => Promise<void>;
+  isTyping?: boolean;
+  onGeneratingImageChange?: (isGenerating: boolean) => void;
+  onScrollToBottom?: () => void;
 };
 // ProductRecommendations component
 export function ProductRecommendations({
   products,
   onProductClick,
+  messageText,
+  sendHomeGeneration,
+  isTyping = false,
+  onGeneratingImageChange,
+  onScrollToBottom,
 }: ProductRecommendationsProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [likedProducts, setLikedProducts] = useState<Set<number>>(new Set());
-  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isLoadingViewVisual, setIsLoadingViewVisual] = useState(false);
+  const productCardRef = useRef<HTMLDivElement>(null);
 
   const totalProducts = products?.length || 0;
 
@@ -57,7 +73,6 @@ export function ProductRecommendations({
   const getImageUrl = (product: Product | undefined): string => {
     if (!product) return "/placeholder-image.jpg";
 
-    // Check if product has images array (object format)
     if (product.images && product.images.length > 0) {
       const firstImage = product.images[0];
       const imageUrl = firstImage.originalUrl || firstImage.thumbnailUrl;
@@ -68,16 +83,6 @@ export function ProductRecommendations({
         return `https://storage.googleapis.com${imageUrl}`;
       }
     }
-
-    // Fallback to image_urls array (string format)
-    if (product.image_urls && product.image_urls.length > 0) {
-      const imageUrl = product.image_urls[0];
-      if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-        return imageUrl;
-      }
-      return `https://storage.googleapis.com${imageUrl}`;
-    }
-
     return "/placeholder-image.jpg";
   };
 
@@ -86,33 +91,91 @@ export function ProductRecommendations({
 
     const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
     if (iframe) {
-      setIsLoadingProduct(true);
+      setIsLoadingDetails(true);
 
-      // Remove previous load listener if exists
       const handleLoad = () => {
-        setIsLoadingProduct(false);
+        setIsLoadingDetails(false);
         iframe.removeEventListener("load", handleLoad);
       };
 
       iframe.addEventListener("load", handleLoad);
       iframe.src = url;
-
-      // Fallback: if iframe doesn't load within 10 seconds, hide loader
       setTimeout(() => {
-        setIsLoadingProduct(false);
+        setIsLoadingDetails(false);
         iframe.removeEventListener("load", handleLoad);
       }, 10000);
     }
   };
 
-  // Cleanup on unmount
+  const handleViewVisual = async () => {
+    if (!currentProduct || !sendHomeGeneration) return;
+
+    // Statik home image URL
+    const homeImageUrl =
+      "https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvcm00MDUtcGRzcHJpbnRlbGVtZW50LWMwMTAuanBn.jpg";
+
+    // Productning birinchi rasmini olish
+    let productImageUrl = "";
+    if (currentProduct.images && currentProduct.images.length > 0) {
+      const firstImage = currentProduct.images[0];
+      const imageUrl = firstImage.originalUrl || firstImage.thumbnailUrl;
+      if (imageUrl) {
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+          productImageUrl = imageUrl;
+        } else {
+          productImageUrl = `https://storage.googleapis.com${imageUrl}`;
+        }
+      }
+    } else if (
+      currentProduct.image_urls &&
+      currentProduct.image_urls.length > 0
+    ) {
+      const imageUrl = currentProduct.image_urls[0];
+      if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+        productImageUrl = imageUrl;
+      } else {
+        productImageUrl = `https://storage.googleapis.com${imageUrl}`;
+      }
+    }
+
+    if (!productImageUrl) {
+      console.warn("Product image not found");
+      return;
+    }
+
+    try {
+      setIsLoadingViewVisual(true);
+      onGeneratingImageChange?.(true);
+
+      // Scroll qilish - messages container'ning eng pastiga scroll qilinadi
+      setTimeout(() => {
+        onScrollToBottom?.();
+      }, 200);
+
+      await sendHomeGeneration(homeImageUrl, productImageUrl, "");
+      // Loading state typing animation to'xtaguncha saqlanadi
+    } catch (error) {
+      console.error("Failed to send home generation:", error);
+      setIsLoadingViewVisual(false);
+      onGeneratingImageChange?.(false);
+    }
+  };
+
+  // Typing to'xtaganda (message kelganda) loading state'ni to'xtatish
+  useEffect(() => {
+    if (!isTyping && isLoadingViewVisual) {
+      setIsLoadingViewVisual(false);
+      onGeneratingImageChange?.(false);
+    }
+  }, [isTyping, isLoadingViewVisual, onGeneratingImageChange]);
+
   useEffect(() => {
     return () => {
       const iframe = document.getElementById(
         "productFrame"
       ) as HTMLIFrameElement;
       if (iframe) {
-        iframe.removeEventListener("load", () => setIsLoadingProduct(false));
+        iframe.removeEventListener("load", () => setIsLoadingDetails(false));
       }
     };
   }, []);
@@ -129,8 +192,9 @@ export function ProductRecommendations({
           }`}
         >
           <div
+            ref={productCardRef}
             className="product-card"
-            onClick={() => handleProductRedirect(currentProduct.product_url)}
+            // onClick={() => handleProductRedirect(currentProduct.product_url)}
             // onClick={(e) => {
             //   if (currentProduct?.product_url) {
             //     e.preventDefault();
@@ -160,14 +224,18 @@ export function ProductRecommendations({
               </div>
               <div className="product-info">
                 <div className="fcw-product-details">
-                  <h4>{currentProduct.name}</h4>
-                  <p className="fcw-product-description">
-                    {currentProduct.description}
-                  </p>
-                  <div className="fcw-product-specs">
+                  <div className="fcw-product-title-row">
+                    <h4 className="fcw-product-name">{currentProduct.name}</h4>
                     {currentProduct.sku && (
-                      <span>SKU: {currentProduct.sku}</span>
+                      <span className="fcw-product-sku">
+                        SKU: {currentProduct.sku}
+                      </span>
                     )}
+                  </div>
+                  {messageText && (
+                    <p className="fcw-product-description">{messageText}</p>
+                  )}
+                  <div className="fcw-product-specs">
                     {currentProduct.dimensions?.width && (
                       <span>Width: {currentProduct.dimensions.width}</span>
                     )}
@@ -189,15 +257,32 @@ export function ProductRecommendations({
                       handleProductRedirect(currentProduct.product_url);
                     }}
                     className="details-button"
-                    disabled={isLoadingProduct}
+                    disabled={isLoadingDetails || isLoadingViewVisual}
                   >
-                    {isLoadingProduct ? (
+                    {isLoadingDetails ? (
                       <>
                         <Loader2 size={16} className="spinning" />
                         Loading...
                       </>
                     ) : (
                       "Details"
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewVisual();
+                    }}
+                    className="view-visual-button"
+                    disabled={isLoadingDetails || isLoadingViewVisual}
+                  >
+                    {isLoadingViewVisual ? (
+                      <>
+                        <Loader2 size={16} className="spinning" />
+                        Loading...
+                      </>
+                    ) : (
+                      "View Visual"
                     )}
                   </button>
                 </div>

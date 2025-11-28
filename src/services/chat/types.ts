@@ -7,6 +7,7 @@ export interface ServerMessage {
   updatedAt: string;
   images: string[];
   widgetUserId: string;
+  description: string | null;
   widgetUser: {
     id: string;
     firstName: string | null;
@@ -90,4 +91,5 @@ export interface ChatMessage {
   type?: string | null;
   options?: string[];
   schedule?: SchedulePayload | null;
+  description?: string | null;
 }

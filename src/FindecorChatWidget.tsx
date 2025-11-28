@@ -13,6 +13,7 @@ import { useChat } from "./hooks/useChat";
 import { createApiClient, type ApiClient } from "./services/api/apiClient";
 import ChatMessages from "./components/ChatMessages";
 import authService from "./services/chat/auth";
+import { TypingAnimation } from "./components/common/loaders/TypingAnimation/TypingAnimation";
 import type { FindecorChatWidgetProps } from "./types/FindecorChatWidget.types";
 
 const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
@@ -37,6 +38,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     messages,
     quickReplyOptions,
     sendMessage,
+    sendHomeGeneration,
     loading,
     fetching,
     error,
@@ -57,6 +59,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ApiClient | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -287,20 +290,24 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               messages={messages}
               fetching={fetching}
               sendMessage={sendMessage}
+              sendHomeGeneration={sendHomeGeneration}
               showScheduleForm={showScheduleForm}
               onCloseSchedule={() => setShowScheduleForm(false)}
               widgetKey={widgetKey}
               products={availableProducts}
+              isTyping={isTyping}
+              isGeneratingImage={isGeneratingImage}
+              onGeneratingImageChange={setIsGeneratingImage}
+              onScrollToBottom={() => {
+                if (messagesContainerRef.current) {
+                  messagesContainerRef.current.scrollTop =
+                    messagesContainerRef.current.scrollHeight;
+                }
+              }}
             />
-            {isTyping && (
-              <div className="fcw fcw-typing-row">
-                <div className="fcw fcw-bubble bot fcw-typing-bubble">
-                  <span className="fcw fcw-typing">
-                    <span className="fcw-typing-dot" />
-                    <span className="fcw-typing-dot" />
-                    <span className="fcw-typing-dot" />
-                  </span>
-                </div>
+            {isTyping && !isGeneratingImage && (
+              <div className="fcw fcw-bubble bot">
+                <TypingAnimation />
               </div>
             )}
             {error && isOnline && (

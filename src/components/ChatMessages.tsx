@@ -2,6 +2,7 @@ import React from "react";
 import type { ChatMessage, SchedulePayload } from "../services/chat/types";
 import { ProductRecommendations } from "./ProductRecommendations/ProductRecommendations";
 import ScheduleVisitForm from "./ScheduleVisitForm/ScheduleVisitForm";
+import { ImageGenerationLoader } from "./common/loaders/ImageGenerationLoader/ImageGenerationLoader";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -11,18 +12,32 @@ interface ChatMessagesProps {
     imageUrl?: string,
     schedule?: SchedulePayload | null
   ) => Promise<void> | void;
+  sendHomeGeneration?: (
+    homeImageUrl: string,
+    productImageUrl: string,
+    prompt?: string
+  ) => Promise<void>;
   showScheduleForm: boolean;
   onCloseSchedule: () => void;
   widgetKey: string;
   products?: import("../services/chat/types").Product[];
+  isTyping?: boolean;
+  isGeneratingImage?: boolean;
+  onGeneratingImageChange?: (isGenerating: boolean) => void;
+  onScrollToBottom?: () => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages,
   fetching,
   sendMessage,
+  sendHomeGeneration,
   showScheduleForm,
   onCloseSchedule,
+  isTyping,
+  isGeneratingImage = false,
+  onGeneratingImageChange,
+  onScrollToBottom,
   widgetKey,
   products = [],
 }) => {
@@ -73,22 +88,27 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             </div>
             {msgs.map((msg) => (
               <div key={msg.id} className="fcw fcw-message">
-                {msg?.text && (
+                {msg?.products && msg.products.length > 0 && (
                   <div
+                    style={{
+                      width: "100%",
+                    }}
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
-                    } ${msg.isError ? "fcw-error-message" : ""}`}
-                    style={
-                      msg.isError
-                        ? {
-                            backgroundColor: "#fee2e2",
-                            color: "#991b1b",
-                            border: "1px solid #fca5a5",
-                          }
-                        : undefined
-                    }
+                    }`}
                   >
-                    {msg.text}
+                    <ProductRecommendations
+                      products={msg.products}
+                      messageText={msg.description ?? undefined}
+                      sendHomeGeneration={sendHomeGeneration}
+                      isTyping={isTyping}
+                      onGeneratingImageChange={onGeneratingImageChange}
+                      onScrollToBottom={onScrollToBottom}
+                      onProductClick={(product) => {
+                        sendMessage(product.name);
+                      }}
+                    />
+
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -135,23 +155,22 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     </span>
                   </div>
                 )}
-
-                {msg?.products && msg.products.length > 0 && (
+                {msg?.text && (
                   <div
-                    style={{
-                      width: "100%",
-                    }}
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
-                    }`}
+                    } ${msg.isError ? "fcw-error-message" : ""}`}
+                    style={
+                      msg.isError
+                        ? {
+                            backgroundColor: "#fee2e2",
+                            color: "#991b1b",
+                            border: "1px solid #fca5a5",
+                          }
+                        : undefined
+                    }
                   >
-                    <ProductRecommendations
-                      products={msg.products}
-                      onProductClick={(product) => {
-                        sendMessage(product.name);
-                      }}
-                    />
-
+                    {msg.text}
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -271,6 +290,13 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
           </div>
         );
       })}
+      {isGeneratingImage && (
+        <div className="fcw fcw-typing-row">
+          <div className="fcw fcw-bubble bot">
+            <ImageGenerationLoader />
+          </div>
+        </div>
+      )}
     </>
   );
 };
