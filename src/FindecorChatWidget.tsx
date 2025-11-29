@@ -150,6 +150,14 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       if (selectedFile) {
         setIsUploading(true);
         imageUrl = await uploadFile(selectedFile);
+        // Trigger image upload event to refresh homeImageUrl in ProductRecommendations
+        interface WindowWithHandler extends Window {
+          __fcwImageUploadHandler?: () => void;
+        }
+        const handler = (window as WindowWithHandler).__fcwImageUploadHandler;
+        if (handler) {
+          handler();
+        }
       }
       sendMessage(input, imageUrl);
       setInput("");

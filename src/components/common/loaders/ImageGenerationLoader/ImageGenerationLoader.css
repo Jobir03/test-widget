@@ -111,6 +111,13 @@
   animation-delay: 2s;
 }
 
+.fcw-loader-message-wrapper {
+  min-height: 1.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .fcw-loader-message {
   font-size: 15px;
   font-weight: 600;
@@ -133,6 +140,10 @@
 .fcw-loader-dots-animation::after {
   content: "";
   animation: fcw-dots 1.5s steps(4) infinite;
+}
+
+.fcw-loader-message-anim {
+  animation: fcw-message-fade 0.4s ease;
 }
 
 @keyframes fcw-spin {
@@ -206,6 +217,17 @@
   80%,
   100% {
     content: "...";
+  }
+}
+
+@keyframes fcw-message-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

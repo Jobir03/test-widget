@@ -65,6 +65,51 @@ export interface AuthResponse {
   expires_in?: number;
 }
 
+export interface UserData {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  memory: string | null;
+  sessionId: string;
+  createdAt: string;
+  updatedAt: string;
+  lastImageUrl: string | null;
+  widget: {
+    id: number;
+    key: string;
+    color: string;
+    textColor: string;
+    widgetSize: string;
+    position: string;
+    borderRadius: string;
+    companyName: string;
+    isActive: boolean;
+    autoOpen: boolean;
+    autoDelay: boolean;
+    typingIndicator: boolean;
+    soundNotifications: boolean;
+    headerText: string | null;
+    welcomeMessage: string | null;
+    offlineMessage: string | null;
+    inputPlaceholder: string | null;
+    buttonText: string | null;
+    company: {
+      id: string;
+      name: string;
+      description: string;
+      avatar: string;
+      email: string;
+      imported_countries: string[];
+      services: string[];
+      city: string;
+      country: string;
+      website: string;
+      businessType: string;
+    };
+  };
+}
+
 const createAuthService = () => {
   let widgetKey: string | null = null;
   let isAuthenticating = false;
@@ -259,6 +304,46 @@ const createAuthService = () => {
     return () => tokenListeners.delete(cb);
   };
 
+  const getUser = async (): Promise<UserData> => {
+    // Don't make API request if browser is offline
+    if (!isOnline()) {
+      throw new Error("No internet connection. Please check your network.");
+    }
+
+    const token = await getToken();
+    if (!token) {
+      throw new Error("No authentication token available");
+    }
+
+    try {
+      const url = `${API_BASE}/widget-users/me`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: "Failed to fetch user data",
+        }));
+        const error = new Error(
+          errorData.message || "Failed to fetch user data"
+        ) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get user error:", error);
+      throw error;
+    }
+  };
+
   const onBaseUrlChanged = (cb: (baseUrl: string) => void): (() => void) => {
     baseUrlListeners.add(cb);
     return () => baseUrlListeners.delete(cb);
@@ -272,6 +357,7 @@ const createAuthService = () => {
     getToken,
     clearToken,
     getStoredToken,
+    getUser,
     onTokenChanged,
     onBaseUrlChanged,
   };

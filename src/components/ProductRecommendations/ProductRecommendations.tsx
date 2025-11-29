@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import "./ProductRecommendations.css";
 import { ChevronLeft, ChevronRight, Heart, Loader2 } from "lucide-react";
 import type { Product } from "../../services/chat/types";
+import { authService } from "../../services/chat/auth";
 
 type ProductRecommendationsProps = {
   products: Product[];
@@ -31,6 +32,7 @@ export function ProductRecommendations({
   const [likedProducts, setLikedProducts] = useState<Set<number>>(new Set());
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isLoadingViewVisual, setIsLoadingViewVisual] = useState(false);
+  const [homeImageUrl, setHomeImageUrl] = useState<string | null>(null);
   const productCardRef = useRef<HTMLDivElement>(null);
 
   const totalProducts = products?.length || 0;
@@ -107,12 +109,60 @@ export function ProductRecommendations({
     }
   };
 
+  // Function to fetch and update homeImageUrl
+  const fetchUserData = async () => {
+    try {
+      const userData = await authService.getUser();
+      if (userData?.lastImageUrl) {
+        // Add base URL prefix if needed
+        let imageUrl = userData.lastImageUrl;
+        if (
+          !imageUrl.startsWith("http://") &&
+          !imageUrl.startsWith("https://")
+        ) {
+          imageUrl = `https://storage.googleapis.com/${imageUrl}`;
+        }
+        setHomeImageUrl(imageUrl);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+      // Don't set default URL on error
+    }
+  };
+
+  // Fetch user data to get lastImageUrl on component mount
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  // Refresh homeImageUrl when image is uploaded
+  useEffect(() => {
+    // Listen for image upload events via window event
+    const handleImageUpload = () => {
+      fetchUserData();
+    };
+
+    // Store the handler on window object
+    interface WindowWithHandler extends Window {
+      __fcwImageUploadHandler?: () => void;
+    }
+    (window as WindowWithHandler).__fcwImageUploadHandler = handleImageUpload;
+
+    return () => {
+      delete (window as WindowWithHandler).__fcwImageUploadHandler;
+    };
+  }, []);
+
   const handleViewVisual = async () => {
     if (!currentProduct || !sendHomeGeneration) return;
 
-    // Statik home image URL
-    const homeImageUrl =
-      "https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvcm00MDUtcGRzcHJpbnRlbGVtZW50LWMwMTAuanBn.jpg";
+    // Use lastImageUrl from user data, return early if not available
+    if (!homeImageUrl) {
+      console.warn("Home image URL not available");
+      return;
+    }
+
+    const finalHomeImageUrl = homeImageUrl;
 
     // Productning birinchi rasmini olish
     let productImageUrl = "";
@@ -152,7 +202,7 @@ export function ProductRecommendations({
         onScrollToBottom?.();
       }, 200);
 
-      await sendHomeGeneration(homeImageUrl, productImageUrl, "");
+      await sendHomeGeneration(finalHomeImageUrl, productImageUrl, "");
       // Loading state typing animation to'xtaguncha saqlanadi
     } catch (error) {
       console.error("Failed to send home generation:", error);
