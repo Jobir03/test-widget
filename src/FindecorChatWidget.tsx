@@ -68,6 +68,17 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   }, [apiBase]);
 
   useEffect(() => {
+    // Check if widgetKey has changed and re-authenticate if needed
+    if (widgetKey) {
+      authService.setWidgetKey(widgetKey);
+      // authenticate will check if key changed and re-auth if needed
+      authService.authenticate(widgetKey).catch((error) => {
+        console.error("Widget authentication error:", error);
+      });
+    }
+  }, [widgetKey]);
+
+  useEffect(() => {
     if (widgetRef.current) {
       const root =
         widgetRef.current.closest("#findecor-chat-root") ||

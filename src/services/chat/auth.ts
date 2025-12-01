@@ -2,6 +2,7 @@
 let API_BASE = "https://admin-backend.findecor.io";
 const TOKEN_KEY = "findecor_chat_token";
 const REFRESH_TOKEN_KEY = "findecor_chat_refresh_token";
+const WIDGET_KEY_COOKIE = "findecor_chat_widget_key";
 const COOKIE_PATH = "/";
 const COOKIE_DOMAIN = window.location.hostname;
 
@@ -137,11 +138,21 @@ const createAuthService = () => {
   const clearToken = (): void => {
     deleteCookie(TOKEN_KEY);
     deleteCookie(REFRESH_TOKEN_KEY);
+    deleteCookie(WIDGET_KEY_COOKIE);
     tokenListeners.forEach((cb) => cb(null));
   };
 
   const getStoredToken = (): string | null => {
     return getCookie(TOKEN_KEY);
+  };
+
+  const getStoredWidgetKey = (): string | null => {
+    return getCookie(WIDGET_KEY_COOKIE);
+  };
+
+  const setStoredWidgetKey = (key: string): void => {
+    // Store widget key with 30 days expiration
+    setCookie(WIDGET_KEY_COOKIE, key, 30);
   };
 
   const authenticate = async (key: string): Promise<AuthResponse> => {
@@ -150,15 +161,32 @@ const createAuthService = () => {
       throw new Error("No internet connection. Please check your network.");
     }
 
+    // Check if widget key has changed
+    const storedWidgetKey = getStoredWidgetKey();
+    const storedToken = getStoredToken();
+
+    // If widget key is the same and token exists, return existing token without re-authenticating
+    if (storedWidgetKey === key && storedToken) {
+      return {
+        access_token: storedToken,
+        refresh_token: getCookie(REFRESH_TOKEN_KEY) || "",
+      };
+    }
+
+    // If widget key changed, clear old tokens
+    if (storedWidgetKey && storedWidgetKey !== key) {
+      clearToken();
+    }
+
     if (isAuthenticating) {
       return new Promise((resolve, reject) => {
         const checkAuth = () => {
           if (!isAuthenticating) {
-            const storedToken = getStoredToken();
-            if (storedToken) {
+            const currentStoredToken = getStoredToken();
+            if (currentStoredToken) {
               resolve({
-                access_token: storedToken,
-                refresh_token: localStorage.getItem(REFRESH_TOKEN_KEY) || "",
+                access_token: currentStoredToken,
+                refresh_token: getCookie(REFRESH_TOKEN_KEY) || "",
               });
             } else {
               reject(new Error("Authentication failed"));
@@ -197,6 +225,7 @@ const createAuthService = () => {
 
       const data = await response.json();
       setTokenData(data);
+      setStoredWidgetKey(key); // Store widget key in cookie
       return data;
     } catch (error) {
       console.error("Authentication error:", error);
