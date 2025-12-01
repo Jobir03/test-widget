@@ -1,50 +1,77 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { Calendar as CalIcon, X } from "lucide-react";
 import "./ScheduleVisitForm.css";
 import { scheduleService, type Branch } from "../../services/chat/schedule";
-import type { SchedulePayload, Product } from "../../services/chat/types";
+import type { SchedulePayload } from "../../services/chat/types";
+import { authService } from "../../services/chat/auth";
 
 interface ScheduleVisitFormProps {
   widgetKey: string;
   onClose?: () => void;
   onSubmitSchedule: (payload: SchedulePayload) => Promise<void> | void;
-  products?: Product[];
 }
 
 export default function ScheduleVisitForm({
   widgetKey,
   onClose,
   onSubmitSchedule,
-  products = [],
 }: ScheduleVisitFormProps) {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [contact, setContact] = useState("");
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState("");
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [loadingBranches, setLoadingBranches] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const userDataLoadedRef = useRef(false);
+  const [userData, setUserData] = useState<
+    import("../../services/chat/auth").UserData | null
+  >(null);
 
-  // Clear selection when products change (product selection is optional, no auto-select)
+  // Load user data when form opens (only once per mount)
   useEffect(() => {
-    // If current selection is not in the new products list, clear it
-    if (selectedProductId && products.length > 0) {
-      const productExists = products.find(
-        (p) => p.id.toString() === selectedProductId
-      );
-      if (!productExists) {
-        setSelectedProductId("");
-      }
-    } else if (products.length === 0) {
-      // If no products available, clear selection
-      setSelectedProductId("");
+    // Prevent multiple API calls
+    if (userDataLoadedRef.current) {
+      return;
     }
-    // Don't auto-select first product - keep it empty by default
-  }, [products, selectedProductId]);
+
+    let isActive = true;
+    const loadUserData = async () => {
+      try {
+        userDataLoadedRef.current = true;
+        const fetchedUserData = await authService.getUser();
+        if (isActive && fetchedUserData) {
+          setUserData(fetchedUserData);
+          // Set name from firstName and lastName
+          const fullName = [fetchedUserData.firstName, fetchedUserData.lastName]
+            .filter(Boolean)
+            .join(" ");
+          if (fullName) {
+            setName(fullName);
+          }
+          // Set contact from userData (contact field or fallback to email)
+          if (fetchedUserData.contact) {
+            setContact(fetchedUserData.contact);
+          } else if (fetchedUserData.email) {
+            setContact(fetchedUserData.email);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load user data:", e);
+        userDataLoadedRef.current = false; // Allow retry on error
+      }
+    };
+
+    loadUserData();
+    return () => {
+      isActive = false;
+      // Reset ref when component unmounts so it can load again if remounted
+      userDataLoadedRef.current = false;
+    };
+  }, []); // Empty deps - only run once on mount
 
   useEffect(() => {
     let isActive = true;
@@ -71,7 +98,15 @@ export default function ScheduleVisitForm({
   }, [widgetKey]);
 
   const handleSubmit = async () => {
-    if (!name || !email || !date || !time || !selectedBranchId) {
+    // If no branches available, allow submission without branchId
+    const requiresBranch = branches.length > 0;
+    if (
+      !name ||
+      !contact ||
+      !date ||
+      !time ||
+      (requiresBranch && !selectedBranchId)
+    ) {
       alert("Iltimos, barcha maydonlarni to'ldiring!");
       return;
     }
@@ -85,24 +120,26 @@ export default function ScheduleVisitForm({
       const minutes = minutesPart?.slice(0, 2) || "00";
       isoDate.setHours(Number(hours), Number(minutes), 0, 0);
 
+      // Split name into firstName and lastName
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
       await onSubmitSchedule({
-        branchId: selectedBranchId,
-        productId: selectedProductId || "", // Product is optional
+        branchId: selectedBranchId || "", // Empty if no branches available
+        productId: "", // Product selection removed
         bookedTime: isoDate.toISOString(),
-        firstName: name,
-        lastName: "",
-        email,
+        firstName,
+        lastName,
+        contact,
       });
 
-      alert("Tashrif muvaffaqiyatli rejalashtirildi!");
       if (onClose) {
         onClose();
       }
     } catch (e) {
       console.error(e);
-      alert(
-        "Tashrifni rejalashtirishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring."
-      );
+      alert(`Failed to schedule visit: ${e}`);
     } finally {
       setSubmitting(false);
     }
@@ -157,16 +194,18 @@ export default function ScheduleVisitForm({
                 <input
                   type="text"
                   placeholder="Enter your email or phone"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
                   className="schedule-input"
                 />
               </div>
             </div>
 
-            <div className="schedule-row">
-              <div className="schedule-form-group">
-                <label className="schedule-label">Branch</label>
+            <div className="schedule-form-group">
+              <label className="schedule-label">
+                {branches.length > 0 ? "Branch" : "Address"}
+              </label>
+              {branches.length > 0 ? (
                 <select
                   value={selectedBranchId}
                   onChange={(e) => setSelectedBranchId(e.target.value)}
@@ -180,32 +219,28 @@ export default function ScheduleVisitForm({
                   </option>
                   {branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>
-                      {branch.name}
+                      {branch.name} - (address: {branch.address})
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div className="schedule-form-group">
-                <label className="schedule-label">Product (Optional)</label>
-                <select
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="schedule-select"
-                  disabled={products.length === 0}
-                >
-                  <option value="">
-                    {products.length === 0
-                      ? "No products available"
-                      : "Choose a product "}
-                  </option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id.toString()}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              ) : !loadingBranches && userData?.widget?.company ? (
+                <div className="schedule-company-info">
+                  <div className="schedule-company-location">
+                    {userData.widget.company.city &&
+                    userData.widget.company.country
+                      ? `${userData.widget.company.city}, ${userData.widget.company.country}`
+                      : userData.widget.company.city ||
+                        userData.widget.company.country ||
+                        "Location not available"}
+                  </div>
+                </div>
+              ) : (
+                <div className="schedule-company-info">
+                  <div className="schedule-company-location">
+                    {loadingBranches ? "Loading..." : "No branches available"}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="schedule-form-group">
@@ -253,11 +288,10 @@ export default function ScheduleVisitForm({
               disabled={
                 submitting ||
                 !name ||
-                !email ||
+                !contact ||
                 !date ||
                 !time ||
                 !selectedBranchId
-                // Product is optional, so we don't require selectedProductId
               }
               className="schedule-submit-button"
             >

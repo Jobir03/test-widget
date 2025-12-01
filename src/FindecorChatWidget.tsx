@@ -7,6 +7,7 @@ import {
   Paperclip,
   RefreshCw,
   Send,
+  Trash2,
   X,
 } from "lucide-react";
 import { useChat } from "./hooks/useChat";
@@ -43,17 +44,17 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     fetching,
     error,
     isTyping,
+    isUploading,
+    setIsUploading,
     loadMoreMessages,
     hasMore,
     fetchingMore,
-    availableProducts,
   } = useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
   const [fullscreen, setFullscreen] = useState(false);
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -167,8 +168,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       }
     } catch (error) {
       console.error("Error sending message:", error);
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -177,6 +176,15 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.schedule) {
       setShowScheduleForm(false);
+      // Scroll to bottom when schedule message arrives
+      if (messagesContainerRef.current) {
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop =
+              messagesContainerRef.current.scrollHeight;
+          }
+        }, 100);
+      }
     }
   }, [messages]);
 
@@ -188,7 +196,22 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
         container.scrollHeight - container.scrollTop - container.clientHeight <
         100;
       if (isNearBottom || messages.length <= 30) {
-        container.scrollTop = container.scrollHeight;
+        // Check if last message has images - if so, wait for images to load
+        const lastMessage = messages[messages.length - 1];
+        const hasImages = lastMessage?.images && lastMessage.images.length > 0;
+
+        if (hasImages) {
+          // For messages with images, wait longer for images to load
+          // The onLoad handler in ChatMessages will handle scrolling after image loads
+          return;
+        }
+
+        // Use setTimeout to ensure DOM is updated
+        setTimeout(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          }
+        }, 50);
       }
     }
   }, [messages, open]);
@@ -300,9 +323,10 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               sendMessage={sendMessage}
               sendHomeGeneration={sendHomeGeneration}
               showScheduleForm={showScheduleForm}
-              onCloseSchedule={() => setShowScheduleForm(false)}
+              onCloseSchedule={() => {
+                setShowScheduleForm(false);
+              }}
               widgetKey={widgetKey}
-              products={availableProducts}
               isTyping={isTyping}
               isGeneratingImage={isGeneratingImage}
               onGeneratingImageChange={setIsGeneratingImage}
@@ -313,9 +337,22 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 }
               }}
             />
-            {isTyping && !isGeneratingImage && (
+            {(isTyping || isUploading) && !isGeneratingImage && (
               <div className="fcw fcw-bubble bot">
-                <TypingAnimation />
+                {isUploading ? (
+                  <TypingAnimation
+                    mode="text"
+                    messages={[
+                      "Processing room details",
+                      "Detecting interior design style",
+                      "Extracting room color palette",
+                      "Estimating floor area",
+                      "Searching products",
+                    ]}
+                  />
+                ) : (
+                  <TypingAnimation mode="dots" />
+                )}
               </div>
             )}
             {error && isOnline && (
@@ -376,7 +413,18 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             )}
             <button
               className="schedule-visit"
-              onClick={() => setShowScheduleForm(true)}
+              onClick={() => {
+                setShowScheduleForm(true);
+                // Scroll to bottom when schedule form opens
+                if (messagesContainerRef.current) {
+                  setTimeout(() => {
+                    if (messagesContainerRef.current) {
+                      messagesContainerRef.current.scrollTop =
+                        messagesContainerRef.current.scrollHeight;
+                    }
+                  }, 100);
+                }
+              }}
             >
               <Calendar size={16} />
               Schedule Visit
@@ -387,7 +435,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               <div className="fcw sellect-file">
                 <span>{selectedFile.name}</span>
                 <button onClick={removeFile} className="fcw-remove-file-btn">
-                  <X size={16} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             )}

@@ -20,7 +20,6 @@ interface ChatMessagesProps {
   showScheduleForm: boolean;
   onCloseSchedule: () => void;
   widgetKey: string;
-  products?: import("../services/chat/types").Product[];
   isTyping?: boolean;
   isGeneratingImage?: boolean;
   onGeneratingImageChange?: (isGenerating: boolean) => void;
@@ -39,7 +38,6 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   onGeneratingImageChange,
   onScrollToBottom,
   widgetKey,
-  products = [],
 }) => {
   const formatDate = (date: Date) =>
     `${String(date.getDate()).padStart(2, "0")}/${String(
@@ -88,6 +86,21 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             </div>
             {msgs.map((msg) => (
               <div key={msg.id} className="fcw fcw-message">
+                {msg?.description && (
+                  <div
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    }`}
+                  >
+                    {msg.description}
+                    <span className="fcw fcw-time">
+                      {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                )}
                 {msg?.products && msg.products.length > 0 && (
                   <div
                     style={{
@@ -144,9 +157,19 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                             borderRadius: "8px",
                             objectFit: "cover",
                           }}
+                          onLoad={() => {
+                            // Scroll to bottom after image is fully loaded
+                            if (
+                              onScrollToBottom &&
+                              idx === msg.images.length - 1
+                            ) {
+                              setTimeout(() => {
+                                onScrollToBottom();
+                              }, 50);
+                            }
+                          }}
                         />
                       ))}
-                      {msg?.description}
                     </div>
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -156,6 +179,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     </span>
                   </div>
                 )}
+
                 {msg?.text && (
                   <div
                     className={`fcw fcw-bubble ${
@@ -267,8 +291,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                             >
                               <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
                               {schedule.widgetUser.firstName}
-                              {schedule.widgetUser.email
-                                ? ` ${schedule.widgetUser.email}`
+                              {schedule.widgetUser.contact
+                                ? ` (${schedule.widgetUser.contact})`
                                 : ""}
                             </div>
                           )}
@@ -284,8 +308,13 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 onClose={onCloseSchedule}
                 onSubmitSchedule={async (schedule) => {
                   await sendMessage("", "", schedule);
+                  // Scroll to bottom after schedule is submitted
+                  if (onScrollToBottom) {
+                    setTimeout(() => {
+                      onScrollToBottom();
+                    }, 100);
+                  }
                 }}
-                products={products}
               />
             )}
           </div>

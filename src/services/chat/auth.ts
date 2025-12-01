@@ -70,6 +70,7 @@ export interface UserData {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
+  contact: string | null;
   memory: string | null;
   sessionId: string;
   createdAt: string;

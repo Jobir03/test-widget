@@ -71,7 +71,7 @@ export interface SchedulePayload {
   bookedTime: string;
   firstName: string;
   lastName: string;
-  email: string;
+  contact: string; // Email or phone number
 }
 
 export interface ChatMessage {

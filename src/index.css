@@ -381,19 +381,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
   font-size: 12px;
   color: var(--fcw-color);
+  background: #f3f4f6;
+  margin: 0 12px;
+  border-radius: 10px;
 }
 
 .fcw-remove-file-btn {
-  background: transparent;
+  background: transparent !important;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: #6b7280 !important;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-left: 8px;
+  box-shadow: none !important;
 }
 
 .fcw-file-input-hidden {
@@ -425,9 +433,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-  background: #f3f4f6;
   padding: 10px 12px;
-  border-radius: 12px;
 }
 
 .fcw-input input[type="text"] {

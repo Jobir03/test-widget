@@ -21,7 +21,6 @@ type ProductRecommendationsProps = {
 export function ProductRecommendations({
   products,
   onProductClick,
-  messageText,
   sendHomeGeneration,
   isTyping = false,
   onGeneratingImageChange,
@@ -110,8 +109,15 @@ export function ProductRecommendations({
   };
 
   // Function to fetch and update homeImageUrl
-  const fetchUserData = async () => {
+  const fetchUserData = useRef(false);
+  const fetchUserDataFn = async () => {
+    // Prevent multiple API calls
+    if (fetchUserData.current) {
+      return;
+    }
+
     try {
+      fetchUserData.current = true;
       const userData = await authService.getUser();
       if (userData?.lastImageUrl) {
         // Add base URL prefix if needed
@@ -126,20 +132,24 @@ export function ProductRecommendations({
       }
     } catch (error) {
       console.error("Failed to fetch user data:", error);
+      fetchUserData.current = false; // Allow retry on error
       // Don't set default URL on error
     }
   };
 
-  // Fetch user data to get lastImageUrl on component mount
+  // Fetch user data to get lastImageUrl on component mount (only once)
   useEffect(() => {
-    fetchUserData();
-  }, []);
+    fetchUserDataFn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   // Refresh homeImageUrl when image is uploaded
   useEffect(() => {
     // Listen for image upload events via window event
     const handleImageUpload = () => {
-      fetchUserData();
+      // Reset ref to allow fetching again after image upload
+      fetchUserData.current = false;
+      fetchUserDataFn();
     };
 
     // Store the handler on window object
@@ -282,8 +292,10 @@ export function ProductRecommendations({
                       </span>
                     )}
                   </div>
-                  {messageText && (
-                    <p className="fcw-product-description">{messageText}</p>
+                  {currentProduct.description && (
+                    <p className="fcw-product-description">
+                      {currentProduct.description}
+                    </p>
                   )}
                   <div className="fcw-product-specs">
                     {currentProduct.dimensions?.width && (

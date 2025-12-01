@@ -47,3 +47,54 @@
     opacity: 1;
   }
 }
+
+.fcw-typing-text {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.fcw-typing-text::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #9ca3af;
+  border-radius: 50%;
+  animation: fcw-loader-pulse 1.4s infinite;
+  flex-shrink: 0;
+}
+
+.fcw-typing-dots-animation {
+  display: inline-block;
+  animation: fcw-typing-dots 1.4s infinite;
+  margin-left: 2px;
+}
+
+@keyframes fcw-typing-dots {
+  0%,
+  20% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes fcw-loader-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}

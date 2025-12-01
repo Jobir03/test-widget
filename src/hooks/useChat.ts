@@ -19,6 +19,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const apiRef = useRef<ReturnType<typeof createApiClient> | null>(null);
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [fetchingMore, setFetchingMore] = useState(false);
@@ -236,6 +237,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     // Stop typing animation for bot messages (including error messages) or scheduled messages
     if (msg.from === "bot" || msg.isAdmin || (!msg.isAdmin && msg.schedule)) {
       setIsTyping(false);
+      setIsUploading(false);
     }
   }, []);
 
@@ -367,6 +369,8 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     fetching,
     error,
     isTyping,
+    isUploading,
+    setIsUploading,
     loadMoreMessages,
     hasMore,
     fetchingMore,
