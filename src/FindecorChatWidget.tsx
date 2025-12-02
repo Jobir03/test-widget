@@ -5,6 +5,7 @@ import {
   MessageCircle,
   Minimize2,
   Paperclip,
+  Phone,
   RefreshCw,
   Send,
   Trash2,
@@ -60,8 +61,12 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ApiClient | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [showCallMeForm, setShowCallMeForm] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
+  const [companyAvatar, setCompanyAvatar] = useState<string | null>(
+    "https://cdn-icons-png.flaticon.com/512/6858/6858504.png"
+  );
 
   useEffect(() => {
     authService.setBaseUrl(apiBase);
@@ -75,6 +80,18 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       authService.authenticate(widgetKey).catch((error) => {
         console.error("Widget authentication error:", error);
       });
+
+      // Load company avatar
+      authService
+        .getUser()
+        .then((userData) => {
+          if (userData?.widget?.company?.avatar) {
+            setCompanyAvatar(userData.widget.company.avatar);
+          }
+        })
+        .catch(() => {
+          // Silently fail if user data can't be loaded
+        });
     }
   }, [widgetKey]);
 
@@ -185,7 +202,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   useEffect(() => {
     if (!messages.length) return;
     const lastMessage = messages[messages.length - 1];
-    
+
     // Handle schedule form display
     if (lastMessage.showScheduleForm === true) {
       setShowScheduleForm(true);
@@ -202,6 +219,20 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       // If schedule is confirmed, close the form
       setShowScheduleForm(false);
       // Scroll to bottom when schedule message arrives
+      if (messagesContainerRef.current) {
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop =
+              messagesContainerRef.current.scrollHeight;
+          }
+        }, 100);
+      }
+    }
+
+    // Handle call request display
+    if (lastMessage.callRequest) {
+      setShowCallMeForm(false);
+      // Scroll to bottom when call request message arrives
       if (messagesContainerRef.current) {
         setTimeout(() => {
           if (messagesContainerRef.current) {
@@ -277,7 +308,28 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
           onClick={() => setOpen(true)}
           aria-label="Chat"
         >
-          <MessageCircle size={26} />
+          <div className="fcw-launcher-content">
+            {companyAvatar && (
+              <div className="fcw-launcher-avatar">
+                <img
+                  src={
+                    "https://cdn-icons-png.flaticon.com/512/6858/6858504.png"
+                  }
+                  alt="Company"
+                />
+              </div>
+            )}
+            <div className="fcw-launcher-text">
+              <div className="fcw-launcher-title">Rug Advice in One Click</div>
+              <div className="fcw-launcher-description">
+                Upload your room photo and get personalized rug recommendations
+                instantly.
+              </div>
+            </div>
+            <div className="fcw-launcher-icon">
+              <MessageCircle size={24} />
+            </div>
+          </div>
         </button>
       )}
 
@@ -350,6 +402,10 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               showScheduleForm={showScheduleForm}
               onCloseSchedule={() => {
                 setShowScheduleForm(false);
+              }}
+              showCallMeForm={showCallMeForm}
+              onCloseCallMe={() => {
+                setShowCallMeForm(false);
               }}
               widgetKey={widgetKey}
               isTyping={isTyping}
@@ -436,24 +492,44 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 ))}
               </div>
             )}
-            <button
-              className="schedule-visit"
-              onClick={() => {
-                setShowScheduleForm(true);
-                // Scroll to bottom when schedule form opens
-                if (messagesContainerRef.current) {
-                  setTimeout(() => {
-                    if (messagesContainerRef.current) {
-                      messagesContainerRef.current.scrollTop =
-                        messagesContainerRef.current.scrollHeight;
-                    }
-                  }, 100);
-                }
-              }}
-            >
-              <Calendar size={16} />
-              Schedule Visit
-            </button>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                className="schedule-visit"
+                onClick={() => {
+                  setShowScheduleForm(true);
+                  // Scroll to bottom when schedule form opens
+                  if (messagesContainerRef.current) {
+                    setTimeout(() => {
+                      if (messagesContainerRef.current) {
+                        messagesContainerRef.current.scrollTop =
+                          messagesContainerRef.current.scrollHeight;
+                      }
+                    }, 100);
+                  }
+                }}
+              >
+                <Calendar size={16} />
+                Schedule Visit
+              </button>
+              <button
+                className="schedule-visit"
+                onClick={() => {
+                  setShowCallMeForm(true);
+                  // Scroll to bottom when call me form opens
+                  if (messagesContainerRef.current) {
+                    setTimeout(() => {
+                      if (messagesContainerRef.current) {
+                        messagesContainerRef.current.scrollTop =
+                          messagesContainerRef.current.scrollHeight;
+                      }
+                    }, 100);
+                  }
+                }}
+              >
+                <Phone size={16} />
+                Call me
+              </button>
+            </div>
           </div>
           <div className="fcw fcw-input">
             {selectedFile && (

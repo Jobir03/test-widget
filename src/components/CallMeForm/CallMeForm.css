@@ -1,4 +1,4 @@
-.schedule-container {
+.call-me-container {
   min-height: auto;
   background-color: transparent;
   display: flex;
@@ -9,7 +9,7 @@
   font-family: "Inter", sans-serif;
 }
 
-.schedule-card {
+.call-me-card {
   background-color: white;
   border-radius: 8px;
   padding: 10px 12px;
@@ -20,7 +20,7 @@
   overflow: visible;
 }
 
-.schedule-close-button {
+.call-me-close-button {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -41,17 +41,17 @@
   margin: 0;
 }
 
-.schedule-close-button:hover {
+.call-me-close-button:hover {
   background: #e5e7eb;
   border-color: #d1d5db;
   color: #111827;
 }
 
-.schedule-close-button:active {
+.call-me-close-button:active {
   transform: scale(0.95);
 }
 
-.schedule-form {
+.call-me-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -59,43 +59,29 @@
 }
 
 /* Add top padding to form when close button exists */
-.schedule-form.has-close-button {
+.call-me-form.has-close-button {
   padding-top: 20px;
 }
 
-.schedule-row {
+.call-me-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.schedule-company-info {
-  padding: 8px 10px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background-color: #f9fafb;
-  color: #4b5563;
-  font-size: 13px;
-}
-
-.schedule-company-location {
-  color: #6b7280;
-  font-style: italic;
-}
-
-.schedule-form-group {
+.call-me-form-group {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.schedule-label {
+.call-me-label {
   font-size: 12px;
   font-weight: 600;
   color: #111827;
 }
 
-.schedule-input {
+.call-me-input {
   padding: 8px 10px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -108,49 +94,16 @@
   box-sizing: border-box;
 }
 
-.schedule-input:focus {
+.call-me-input:focus {
   background-color: white;
   border-color: #d1d5db;
 }
 
-.schedule-input::placeholder {
+.call-me-input::placeholder {
   color: #9ca3af;
 }
 
-/* Date input specific styles */
-.schedule-input[type="date"] {
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.schedule-input[type="date"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-.schedule-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-
-.schedule-select {
-  padding: 8px 10px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 13px;
-  outline: none;
-  background-color: #f9fafb;
-  color: #4b5563;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.schedule-select:focus {
-  background-color: white;
-  border-color: #d1d5db;
-}
-
-.schedule-submit-button {
+.call-me-submit-button {
   padding: 9px 14px;
   background-color: #111827;
   color: white;
@@ -167,11 +120,11 @@
   margin-top: 8px;
 }
 
-.schedule-submit-button:hover:not(:disabled) {
+.call-me-submit-button:hover:not(:disabled) {
   background-color: #4b5563;
 }
 
-.schedule-submit-button:disabled {
+.call-me-submit-button:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
 }

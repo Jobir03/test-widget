@@ -1,8 +1,10 @@
 import React from "react";
-import type { ChatMessage, SchedulePayload } from "../services/chat/types";
+import type { ChatMessage, SchedulePayload, CallRequestPayload } from "../services/chat/types";
 import { ProductRecommendations } from "./ProductRecommendations/ProductRecommendations";
 import ScheduleVisitForm from "./ScheduleVisitForm/ScheduleVisitForm";
+import CallMeForm from "./CallMeForm/CallMeForm";
 import { ImageGenerationLoader } from "./common/loaders/ImageGenerationLoader/ImageGenerationLoader";
+import { Phone } from "lucide-react";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -10,7 +12,8 @@ interface ChatMessagesProps {
   sendMessage: (
     text: string,
     imageUrl?: string,
-    schedule?: SchedulePayload | null
+    schedule?: SchedulePayload | null,
+    callRequest?: CallRequestPayload | null
   ) => Promise<void> | void;
   sendHomeGeneration?: (
     homeImageUrl: string,
@@ -19,6 +22,8 @@ interface ChatMessagesProps {
   ) => Promise<void>;
   showScheduleForm: boolean;
   onCloseSchedule: () => void;
+  showCallMeForm: boolean;
+  onCloseCallMe: () => void;
   widgetKey: string;
   isTyping?: boolean;
   isGeneratingImage?: boolean;
@@ -33,6 +38,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   sendHomeGeneration,
   showScheduleForm,
   onCloseSchedule,
+  showCallMeForm,
+  onCloseCallMe,
   isTyping,
   isGeneratingImage = false,
   onGeneratingImageChange,
@@ -300,6 +307,104 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                       </div>
                     );
                   })()}
+
+                {msg?.callRequest &&
+                  (() => {
+                    const callRequest: any = msg.callRequest as any;
+
+                    return (
+                      <div
+                        className="fcw fcw-call-request-card"
+                        style={{
+                          marginTop: 8,
+                          padding: "8px 10px",
+                          borderRadius: "10px",
+                          background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                          border: "1px solid #86efac",
+                          fontSize: "12px",
+                          lineHeight: 1.4,
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
+                            background: "#22c55e",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Phone size={14} color="white" strokeWidth={2.5} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                              marginBottom: 4,
+                              color: "#166534",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                fontSize: 11,
+                                textTransform: "uppercase",
+                                letterSpacing: 0.3,
+                              }}
+                            >
+                              Call Request
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            {callRequest?.name && (
+                              <div
+                                style={{
+                                  color: "#166534",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  fontSize: 11,
+                                }}
+                              >
+                                <span style={{ opacity: 0.7 }}>Name:</span>
+                                <strong style={{ fontSize: 11 }}>{callRequest.name}</strong>
+                              </div>
+                            )}
+                            {callRequest?.phoneNumber && (
+                              <div
+                                style={{
+                                  color: "#166534",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  fontSize: 11,
+                                }}
+                              >
+                                <span style={{ opacity: 0.7 }}>Phone:</span>
+                                <strong
+                                  style={{
+                                    fontSize: 11,
+                                    fontFamily: "monospace",
+                                    letterSpacing: 0.3,
+                                  }}
+                                >
+                                  {callRequest.phoneNumber}
+                                </strong>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
               </div>
             ))}
             {showScheduleForm && (
@@ -309,6 +414,20 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 onSubmitSchedule={async (schedule) => {
                   await sendMessage("", "", schedule);
                   // Scroll to bottom after schedule is submitted
+                  if (onScrollToBottom) {
+                    setTimeout(() => {
+                      onScrollToBottom();
+                    }, 100);
+                  }
+                }}
+              />
+            )}
+            {showCallMeForm && (
+              <CallMeForm
+                onClose={onCloseCallMe}
+                onSubmitCallRequest={async (callRequest) => {
+                  await sendMessage("", "", null, callRequest);
+                  // Scroll to bottom after call request is submitted
                   if (onScrollToBottom) {
                     setTimeout(() => {
                       onScrollToBottom();

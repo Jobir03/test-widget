@@ -19,6 +19,7 @@ export interface ServerMessage {
   type: string | null;
   options: string[];
   schedule?: SchedulePayload | null;
+  callRequest?: CallRequestPayload | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -74,6 +75,11 @@ export interface SchedulePayload {
   contact: string; // Email or phone number
 }
 
+export interface CallRequestPayload {
+  phoneNumber: string;
+  name: string;
+}
+
 export interface ChatMessage {
   id: string; // server UUID
   from: "user" | "bot";
@@ -91,6 +97,8 @@ export interface ChatMessage {
   type?: string | null;
   options?: string[];
   schedule?: SchedulePayload | null;
+  callRequest?: CallRequestPayload | null;
   description?: string | null;
   showScheduleForm?: boolean; // Flag to show schedule form
+  showCallMeForm?: boolean; // Flag to show call me form
 }

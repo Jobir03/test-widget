@@ -7,6 +7,7 @@ import type {
   ServerMessage,
   PaginatedResponse,
   SchedulePayload,
+  CallRequestPayload,
   Product,
 } from "../services/chat/types";
 
@@ -50,6 +51,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     description: m.description ?? null,
     options: m.options ?? [],
     schedule: m.schedule ?? null,
+    callRequest: m.callRequest ?? null,
   });
 
   /** Fetch message history (paginated) */
@@ -309,16 +311,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const sendMessage = async (
     text: string,
     imageUrl: string = "",
-    schedule?: SchedulePayload | null
+    schedule?: SchedulePayload | null,
+    callRequest?: CallRequestPayload | null
   ) => {
-    if (!chatService.current || (!text.trim() && !imageUrl && !schedule))
+    if (!chatService.current || (!text.trim() && !imageUrl && !schedule && !callRequest))
       return;
     setLoading(true);
     setError(null);
     setIsTyping(true);
 
     try {
-      await chatService.current.sendMessage(text, imageUrl, schedule);
+      await chatService.current.sendMessage(text, imageUrl, schedule, callRequest);
     } catch {
       setError("Failed to send message");
       setMessages((prev) => [

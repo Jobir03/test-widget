@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   ServerMessage,
   SchedulePayload,
+  CallRequestPayload,
   Product,
 } from "./types";
 
@@ -63,6 +64,7 @@ export const createChatService = (widgetKey: string) => {
     type: m.type,
     options: m.options ?? [],
     schedule: m.schedule ?? null,
+    callRequest: m.callRequest ?? null,
   });
 
   const handleConnect = () => {
@@ -289,13 +291,15 @@ export const createChatService = (widgetKey: string) => {
   const sendMessage = (
     text: string,
     imageUrl: string = "",
-    schedule?: SchedulePayload | null
+    schedule?: SchedulePayload | null,
+    callRequest?: CallRequestPayload | null
   ): Promise<ChatMessage> => {
     if (!socket) throw new Error("Socket not initialized");
     const payload: {
       text: string;
       images: string[];
       schedule?: SchedulePayload | null;
+      callRequest?: CallRequestPayload | null;
     } = {
       text: text.trim(),
       images: imageUrl ? [imageUrl] : [],
@@ -303,6 +307,10 @@ export const createChatService = (widgetKey: string) => {
 
     if (schedule) {
       payload.schedule = schedule;
+    }
+
+    if (callRequest) {
+      payload.callRequest = callRequest;
     }
 
     return new Promise<ChatMessage>((resolve, reject) => {
@@ -320,6 +328,7 @@ export const createChatService = (widgetKey: string) => {
           timestamp: new Date(),
           products: [],
           schedule: schedule ?? null,
+          callRequest: callRequest ?? null,
         };
 
         resolve(msg);

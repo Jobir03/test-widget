@@ -47,28 +47,101 @@
   right: var(--fcw-main-position);
   bottom: var(--fcw-main-position);
   left: var(--fcw-auto-position);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  min-width: 280px;
+  max-width: 350px;
+  height: auto;
+  min-height: 80px;
+  border-radius: 16px;
   border: none;
-  background: var(--fcw-accent);
-  color: var(--fcw-accent-contrast);
+  background: #ffffff;
+  color: #111827;
   cursor: pointer;
-  box-shadow: var(--fcw-shadow-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 9999;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.fcw-launcher:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.fcw-launcher:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.fcw-launcher-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  gap: 10px;
+  text-align: left;
+}
+
+.fcw-launcher-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.fcw-launcher:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+.fcw-launcher-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.fcw-launcher:active {
-  transform: scale(0.98);
+.fcw-launcher-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fcw-launcher-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.fcw-launcher-description {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fcw-launcher-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--fcw-accent);
+  color: var(--fcw-accent-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .fcw-container {

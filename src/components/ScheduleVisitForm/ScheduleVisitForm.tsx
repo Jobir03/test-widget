@@ -1,6 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
 import { Calendar as CalIcon, X } from "lucide-react";
 import "./ScheduleVisitForm.css";
 import { scheduleService, type Branch } from "../../services/chat/schedule";
@@ -158,8 +156,35 @@ export default function ScheduleVisitForm({
     "6:00 PM",
   ];
 
-  const isWeekend = (date: Date) => {
-    return date.getDay() === 0;
+  // Format date to YYYY-MM-DD for input type="date"
+  const formatDateForInput = (date: Date | null): string => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Get today's date in YYYY-MM-DD format for min attribute
+  const getTodayDate = (): string => {
+    const today = new Date();
+    return formatDateForInput(today);
+  };
+
+  // Handle date input change
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value) {
+      const selectedDate = new Date(value);
+      // Check if it's Sunday (day 0)
+      if (selectedDate.getDay() === 0) {
+        alert("Yakshanba kunini tanlash mumkin emas!");
+        return;
+      }
+      setDate(selectedDate);
+    } else {
+      setDate(null);
+    }
   };
 
   return (
@@ -243,43 +268,33 @@ export default function ScheduleVisitForm({
               )}
             </div>
 
-            <div className="schedule-form-group">
-              <label className="schedule-label">Select Date</label>
-              <div className="schedule-calendar-wrapper">
-                <Calendar
-                  onChange={(value) => {
-                    if (value) {
-                      const selectedDate = Array.isArray(value)
-                        ? value[0]
-                        : value;
-                      setDate(selectedDate);
-                    }
-                  }}
-                  value={date}
-                  minDate={new Date()}
-                  tileDisabled={({ date }) => isWeekend(date)}
-                  locale="en-US"
-                  formatShortWeekday={(_locale, date) =>
-                    ["SU", "MO", "TU", "WE", "TH", "FR", "SA"][date.getDay()]
-                  }
+            <div className="schedule-row">
+              <div className="schedule-form-group">
+                <label className="schedule-label">Select Date</label>
+                <input
+                  type="date"
+                  value={formatDateForInput(date)}
+                  onChange={handleDateChange}
+                  min={getTodayDate()}
+                  className="schedule-input"
                 />
               </div>
-            </div>
 
-            <div className="schedule-form-group">
-              <label className="schedule-label">Select Time</label>
-              <select
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="schedule-select"
-              >
-                <option value="">Choose a time</option>
-                {times.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              <div className="schedule-form-group">
+                <label className="schedule-label">Select Time</label>
+                <select
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="schedule-select"
+                >
+                  <option value="">Choose a time</option>
+                  {times.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <button
@@ -291,7 +306,7 @@ export default function ScheduleVisitForm({
                 !contact ||
                 !date ||
                 !time ||
-                !selectedBranchId
+                (branches.length > 0 && !selectedBranchId)
               }
               className="schedule-submit-button"
             >
