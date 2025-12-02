@@ -3,9 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Widget Test</title>
+    <link rel="stylesheet" href="./dist/findecor-chat-widget.css" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      iframe {
+        width: 100%;
+        height: 100vh;
+        border: none;
+      }
+    </style>
   </head>
   <body>
-    <h1>Test Page for Widget</h1>
+    <iframe
+      id="productFrame"
+      src="https://www.theorientalcarpet.com"
+      title="Rugs.com"
+    ></iframe>
+    <script src="./dist/findecor-chat-widget.umd.js"></script>
+    <script>
+      window.FindecorChatWidget.init({
+        widgetKey: "dzQMmvuud-qn2ers",
+        apiBase: "https://admin-backend.findecor.io",
+        socketUrl: "wss://admin-backend.findecor.io",
+        color: "#030213",
+        textColor: "#ffffff",
+        widgetSize: "medium",
+        position: "BR",
+        companyName: "Test Company",
+      });
+    </script>
   </body>
 </html>

@@ -222,9 +222,13 @@
   color: #6b7280;
   border-radius: 6px;
   white-space: nowrap;
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  flex-shrink: 1;
   align-self: flex-start;
   margin-top: 2px;
+  display: inline-block;
 }
 
 .product-description {

@@ -1,7 +1,12 @@
 // chatService.ts
 import { io, Socket } from "socket.io-client";
 import { authService } from "./auth";
-import type { ChatMessage, ServerMessage, SchedulePayload } from "./types";
+import type {
+  ChatMessage,
+  ServerMessage,
+  SchedulePayload,
+  Product,
+} from "./types";
 
 type MessageHandler = (msg: ChatMessage) => void;
 type ConnectionStateHandler = (isConnected: boolean) => void;
@@ -179,6 +184,25 @@ export const createChatService = (widgetKey: string) => {
         onMessage?.(errorChatMessage);
       }
     );
+    socket.on(
+      "newSchedule",
+      (data: { schedule?: boolean; products?: Product[] }) => {
+        // Handle newSchedule event - show schedule form if schedule: true
+        if (data?.schedule === true) {
+          const scheduleRequestMessage: ChatMessage = {
+            id: `schedule-request-${Date.now()}`,
+            from: "bot",
+            text: "",
+            images: [],
+            products: data.products || [],
+            timestamp: new Date(),
+            isAdmin: true,
+            showScheduleForm: true,
+          };
+          onMessage?.(scheduleRequestMessage);
+        }
+      }
+    );
   };
 
   const cleanListeners = () => {
@@ -188,6 +212,7 @@ export const createChatService = (widgetKey: string) => {
     socket.off("connect_error", handleConnectError);
     socket.off("newMessage");
     socket.off("errorMessage");
+    socket.off("newSchedule");
   };
 
   const connectWithRetry = async (): Promise<void> => {

@@ -185,7 +185,21 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   useEffect(() => {
     if (!messages.length) return;
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage.schedule) {
+    
+    // Handle schedule form display
+    if (lastMessage.showScheduleForm === true) {
+      setShowScheduleForm(true);
+      // Scroll to bottom when schedule form should be shown
+      if (messagesContainerRef.current) {
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop =
+              messagesContainerRef.current.scrollHeight;
+          }
+        }, 100);
+      }
+    } else if (lastMessage.schedule) {
+      // If schedule is confirmed, close the form
       setShowScheduleForm(false);
       // Scroll to bottom when schedule message arrives
       if (messagesContainerRef.current) {

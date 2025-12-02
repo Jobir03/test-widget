@@ -92,4 +92,5 @@ export interface ChatMessage {
   options?: string[];
   schedule?: SchedulePayload | null;
   description?: string | null;
+  showScheduleForm?: boolean; // Flag to show schedule form
 }
