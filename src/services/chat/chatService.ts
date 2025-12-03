@@ -7,10 +7,12 @@ import type {
   SchedulePayload,
   CallRequestPayload,
   Product,
+  LoadingEvent,
 } from "./types";
 
 type MessageHandler = (msg: ChatMessage) => void;
 type ConnectionStateHandler = (isConnected: boolean) => void;
+type LoadingHandler = (event: LoadingEvent) => void;
 
 const SOCKET_CONFIG = {
   path: "/socket.io",
@@ -23,6 +25,7 @@ export const createChatService = (widgetKey: string) => {
   let socket: Socket | null = null;
   let onMessage: MessageHandler | null = null;
   let onConnectionStateChange: ConnectionStateHandler | null = null;
+  let onLoading: LoadingHandler | null = null;
   let isConnecting = false;
   let reconnectAttempts = 0;
   const MAX_RECONNECT_ATTEMPTS = 3;
@@ -205,6 +208,15 @@ export const createChatService = (widgetKey: string) => {
         }
       }
     );
+    socket.on("loading", (data: LoadingEvent | LoadingEvent[]) => {
+      // Handle both single event and array of events
+      const events = Array.isArray(data) ? data : [data];
+      events.forEach((event) => {
+        if (event && typeof event === "object" && "type" in event && "loading" in event) {
+          onLoading?.(event as LoadingEvent);
+        }
+      });
+    });
   };
 
   const cleanListeners = () => {
@@ -215,6 +227,7 @@ export const createChatService = (widgetKey: string) => {
     socket.off("newMessage");
     socket.off("errorMessage");
     socket.off("newSchedule");
+    socket.off("loading");
   };
 
   const connectWithRetry = async (): Promise<void> => {
@@ -260,7 +273,11 @@ export const createChatService = (widgetKey: string) => {
     }
   };
 
-  const connectSocket = async (url: string, handler: MessageHandler) => {
+  const connectSocket = async (
+    url: string,
+    handler: MessageHandler,
+    loadingHandler?: LoadingHandler
+  ) => {
     if (socket) {
       cleanListeners();
       if (socket.connected) socket.disconnect();
@@ -269,6 +286,7 @@ export const createChatService = (widgetKey: string) => {
 
     const token = await getAuthToken();
     onMessage = handler;
+    onLoading = loadingHandler || null;
 
     socket = io(`${normalizeUrl(url)}/widget-chat`, {
       ...SOCKET_CONFIG,
@@ -371,6 +389,7 @@ export const createChatService = (widgetKey: string) => {
     getSocketId: () => socket?.id ?? null,
     setConnectionStateHandler: (cb: ConnectionStateHandler) =>
       (onConnectionStateChange = cb),
+    setLoadingHandler: (cb: LoadingHandler) => (onLoading = cb),
   };
 };
 

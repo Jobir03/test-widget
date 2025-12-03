@@ -1,10 +1,17 @@
 import React from "react";
-import type { ChatMessage, SchedulePayload, CallRequestPayload } from "../services/chat/types";
+import type {
+  ChatMessage,
+  SchedulePayload,
+  CallRequestPayload,
+} from "../services/chat/types";
 import { ProductRecommendations } from "./ProductRecommendations/ProductRecommendations";
 import ScheduleVisitForm from "./ScheduleVisitForm/ScheduleVisitForm";
 import CallMeForm from "./CallMeForm/CallMeForm";
 import { ImageGenerationLoader } from "./common/loaders/ImageGenerationLoader/ImageGenerationLoader";
+import { TypingAnimation } from "./common/loaders/TypingAnimation/TypingAnimation";
+import ImageMessage from "./ImageMessage/ImageMessage";
 import { Phone } from "lucide-react";
+import type { LoadingType } from "../services/chat/types";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -28,6 +35,7 @@ interface ChatMessagesProps {
   isTyping?: boolean;
   isGeneratingImage?: boolean;
   onGeneratingImageChange?: (isGenerating: boolean) => void;
+  loadingStates?: Record<LoadingType, boolean>;
   onScrollToBottom?: () => void;
 }
 
@@ -43,6 +51,13 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   isTyping,
   isGeneratingImage = false,
   onGeneratingImageChange,
+  loadingStates = {
+    schedule: false,
+    callRequest: false,
+    image: false,
+    ai: false,
+    roomGeneration: false,
+  },
   onScrollToBottom,
   widgetKey,
 }) => {
@@ -99,7 +114,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                       msg.from === "user" ? "user" : "bot"
                     }`}
                   >
-                    {msg.description}
+                    <div className="fcw fcw-message-text">
+                      {msg.description}
+                    </div>
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -110,9 +127,6 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 )}
                 {msg?.products && msg.products.length > 0 && (
                   <div
-                    style={{
-                      width: "100%",
-                    }}
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
                     }`}
@@ -143,41 +157,10 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                       msg.from === "user" ? "user" : "bot"
                     }`}
                   >
-                    <div
-                      style={{
-                        marginTop: "8px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                      }}
-                    >
-                      {msg.images.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          alt={`Attachment ${idx + 1}`}
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "200px",
-                            borderRadius: "8px",
-                            objectFit: "cover",
-                          }}
-                          onLoad={() => {
-                            // Scroll to bottom after image is fully loaded
-                            if (
-                              onScrollToBottom &&
-                              idx === msg.images.length - 1
-                            ) {
-                              setTimeout(() => {
-                                onScrollToBottom();
-                              }, 50);
-                            }
-                          }}
-                        />
-                      ))}
-                    </div>
+                    <ImageMessage
+                      images={msg.images}
+                      onScrollToBottom={onScrollToBottom}
+                    />
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -202,19 +185,33 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         : undefined
                     }
                   >
-                    {msg.text}
-                    <span className="fcw fcw-time">
+                    <div className="fcw fcw-message-text">{msg.text}</div>
+                    <div className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
-                    </span>
+                    </div>
                   </div>
                 )}
 
                 {msg?.schedule &&
                   (() => {
-                    const schedule: any = msg.schedule as any;
+                    const schedule = msg.schedule;
+                    // Type guard to check if it's ScheduleResponse (has populated relations)
+                    const isScheduleResponse = (
+                      s: typeof schedule
+                    ): s is import("../services/chat/types").ScheduleResponse => {
+                      return (
+                        s !== null &&
+                        typeof s === "object" &&
+                        ("branch" in s || "product" in s || "widgetUser" in s)
+                      );
+                    };
+
+                    const scheduleResponse = isScheduleResponse(schedule)
+                      ? schedule
+                      : null;
                     const bookedTime = schedule?.bookedTime
                       ? new Date(schedule.bookedTime)
                       : null;
@@ -271,16 +268,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                               Visit scheduled
                             </span>
                           </div>
-                          {schedule?.branch?.name && (
+                          {scheduleResponse?.branch?.name && (
                             <div style={{ color: "#4b5563" }}>
                               <span style={{ opacity: 0.8 }}>Branch:</span>{" "}
-                              <strong>{schedule.branch.name}</strong>
+                              <strong>{scheduleResponse.branch.name}</strong>
                             </div>
                           )}
-                          {schedule?.product?.name && (
+                          {scheduleResponse?.product?.name && (
                             <div style={{ color: "#4b5563" }}>
                               <span style={{ opacity: 0.8 }}>Product:</span>{" "}
-                              <strong>{schedule.product.name}</strong>
+                              <strong>{scheduleResponse.product.name}</strong>
                             </div>
                           )}
                           {bookedTimeFormatted && (
@@ -289,7 +286,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                               <strong>{bookedTimeFormatted}</strong>
                             </div>
                           )}
-                          {schedule?.widgetUser?.firstName && (
+                          {scheduleResponse?.widgetUser?.firstName && (
                             <div
                               style={{
                                 color: "#6b7280",
@@ -297,9 +294,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                               }}
                             >
                               <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
-                              {schedule.widgetUser.firstName}
-                              {schedule.widgetUser.contact
-                                ? ` (${schedule.widgetUser.contact})`
+                              {scheduleResponse.widgetUser.firstName}
+                              {scheduleResponse.widgetUser.contact
+                                ? ` (${scheduleResponse.widgetUser.contact})`
                                 : ""}
                             </div>
                           )}
@@ -310,7 +307,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
 
                 {msg?.callRequest &&
                   (() => {
-                    const callRequest: any = msg.callRequest as any;
+                    const callRequest = msg.callRequest;
 
                     return (
                       <div
@@ -319,7 +316,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                           marginTop: 8,
                           padding: "8px 10px",
                           borderRadius: "10px",
-                          background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                          background:
+                            "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
                           border: "1px solid #86efac",
                           fontSize: "12px",
                           lineHeight: 1.4,
@@ -363,7 +361,13 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                               Call Request
                             </span>
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 2,
+                            }}
+                          >
                             {callRequest?.name && (
                               <div
                                 style={{
@@ -375,7 +379,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                                 }}
                               >
                                 <span style={{ opacity: 0.7 }}>Name:</span>
-                                <strong style={{ fontSize: 11 }}>{callRequest.name}</strong>
+                                <strong style={{ fontSize: 11 }}>
+                                  {callRequest.name}
+                                </strong>
                               </div>
                             )}
                             {callRequest?.phoneNumber && (
@@ -439,7 +445,41 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
           </div>
         );
       })}
-      {isGeneratingImage && (
+      {/* Dynamic loading indicators based on socket events */}
+      {loadingStates.roomGeneration && (
+        <div className="fcw fcw-typing-row">
+          <div className="fcw fcw-bubble bot">
+            <ImageGenerationLoader />
+          </div>
+        </div>
+      )}
+      {loadingStates.image && (
+        <div className="fcw fcw-typing-row">
+          <div className="fcw fcw-bubble bot">
+            <TypingAnimation
+              mode="text"
+              messages={[
+                "Processing room details",
+                "Detecting interior design style",
+                "Extracting room color palette",
+                "Estimating floor area",
+                "Searching products",
+              ]}
+            />
+          </div>
+        </div>
+      )}
+      {(loadingStates.schedule ||
+        loadingStates.callRequest ||
+        loadingStates.ai) && (
+        <div className="fcw fcw-typing-row">
+          <div className="fcw fcw-bubble bot">
+            <TypingAnimation mode="dots" />
+          </div>
+        </div>
+      )}
+      {/* Legacy support for isGeneratingImage */}
+      {isGeneratingImage && !loadingStates.roomGeneration && (
         <div className="fcw fcw-typing-row">
           <div className="fcw fcw-bubble bot">
             <ImageGenerationLoader />

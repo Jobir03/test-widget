@@ -9,6 +9,8 @@ import type {
   SchedulePayload,
   CallRequestPayload,
   Product,
+  LoadingEvent,
+  LoadingType,
 } from "../services/chat/types";
 
 export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
@@ -25,6 +27,13 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const [hasMore, setHasMore] = useState(true);
   const [fetchingMore, setFetchingMore] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+  const [loadingStates, setLoadingStates] = useState<Record<LoadingType, boolean>>({
+    schedule: false,
+    callRequest: false,
+    image: false,
+    ai: false,
+    roomGeneration: false,
+  });
 
   const isOnline = () =>
     typeof navigator !== "undefined" ? navigator.onLine : true;
@@ -212,6 +221,15 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     }
   }, [apiBase, widgetKey, currentPage, hasMore, fetchingMore, fetching]);
 
+  /** Handle loading events from socket */
+  const onLoadingEvent = useCallback((event: LoadingEvent) => {
+    if (!event || !event.type) return;
+    setLoadingStates((prev) => ({
+      ...prev,
+      [event.type]: event.loading,
+    }));
+  }, []);
+
   /** Handle new incoming message */
   const onNewMessage = useCallback((msg: ChatMessage) => {
     if (!msg) return;
@@ -258,9 +276,11 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     fetchMessages();
 
     if (socketUrl) {
-      chatService.current.connectSocket(socketUrl, onNewMessage).catch(() => {
-        setError("Aloqa o'rnatishda xatolik");
-      });
+      chatService.current
+        .connectSocket(socketUrl, onNewMessage, onLoadingEvent)
+        .catch(() => {
+          setError("Aloqa o'rnatishda xatolik");
+        });
     }
 
     return () => chatService.current?.disconnectSocket();
@@ -290,7 +310,11 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
 
         // Reconnect socket and fetch messages
         // If token is invalid, we'll get 401 error and refresh token will be called automatically
-        await chatService.current.connectSocket(socketUrl, onNewMessage);
+        await chatService.current.connectSocket(
+          socketUrl,
+          onNewMessage,
+          onLoadingEvent
+        );
         await fetchMessages();
         setError(null);
       } catch (error) {
@@ -378,5 +402,6 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     hasMore,
     fetchingMore,
     availableProducts,
+    loadingStates,
   };
 }

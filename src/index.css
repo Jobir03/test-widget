@@ -339,6 +339,13 @@
   box-shadow: var(--fcw-shadow-sm);
   border: 1px solid var(--fcw-border);
 }
+.fcw-message-text {
+  max-width: 450px !important;
+}
+
+.fcw-bubble.user .fcw-message-text {
+  color: var(--fcw-accent-contrast);
+}
 
 .fcw-time {
   display: block;
@@ -588,7 +595,65 @@
     bottom: 20px;
     right: 20px;
   }
+
+  /* Header styles for mobile */
+  .fcw-header {
+    padding: 10px 12px;
+  }
+
+  .fcw-header h2 {
+    font-size: 14px;
+  }
+
+  .fcw-header span {
+    font-size: 12px;
+  }
+
+  .fcw-header .fcw-message-icon {
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .fcw-header .fcw-actions button {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  /* Chat messages styles for mobile */
+  .fcw-messages {
+    padding: 12px;
+  }
+
+  .fcw-bubble {
+    padding: 6px 8px;
+    font-size: 13px;
+    max-width: 90%;
+  }
+
+  .fcw-time {
+    font-size: 9px;
+  }
+
   .fcw-input-container {
     gap: 4px;
+    padding: 10px 10px 8px 10px;
+  }
+
+  .fcw-file-upload-label {
+    padding: 6px;
+    margin-right: 4px;
+  }
+
+  .fcw-input input[type="text"] {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .fcw-input button {
+    padding: 10px 14px;
+    min-width: 40px;
+    border-radius: 20px;
   }
 }

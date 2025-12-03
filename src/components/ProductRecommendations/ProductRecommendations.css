@@ -1,5 +1,6 @@
 .carousel-wrapper {
   position: relative;
+  max-width: 450px;
 }
 
 .carousel-viewport {
@@ -337,5 +338,112 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .carousel-wrapper {
+    max-width: 100%;
+  }
+
+  .product-card {
+    border-radius: 12px;
+  }
+
+  .product-image-container {
+    height: 140px;
+    padding: 4px;
+  }
+
+  .product-like-button {
+    width: 32px;
+    height: 32px;
+    top: 8px;
+    right: 8px;
+  }
+
+  .product-like-button svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .product-info {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .fcw-product-title-row {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .fcw-product-name {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .fcw-product-sku {
+    font-size: 11px;
+    max-width: 120px;
+    margin-top: 1px;
+  }
+
+  .fcw-product-description {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .fcw-product-specs {
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .fcw-product-specs span {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .product-footer {
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .details-button,
+  .view-visual-button {
+    padding: 8px 16px;
+    font-size: 12px;
+    gap: 6px;
+    border-radius: 8px;
+  }
+
+  .details-button svg,
+  .view-visual-button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .carousel-controls {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    gap: 12px;
+  }
+
+  .carousel-control-btn {
+    padding: 3px 12px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .carousel-control-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .page-indicator {
+    font-size: 12px;
   }
 }

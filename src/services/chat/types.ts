@@ -75,9 +75,40 @@ export interface SchedulePayload {
   contact: string; // Email or phone number
 }
 
+// Server response format for schedule (includes populated relations)
+export interface ScheduleResponse {
+  branchId?: string;
+  productId?: string;
+  bookedTime: string;
+  firstName?: string;
+  lastName?: string;
+  contact?: string;
+  branch?: {
+    id: string;
+    name: string;
+  };
+  product?: {
+    id: string;
+    name: string;
+  };
+  widgetUser?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    contact?: string;
+  };
+}
+
 export interface CallRequestPayload {
   phoneNumber: string;
   name: string;
+}
+
+export type LoadingType = "schedule" | "callRequest" | "image" | "ai" | "roomGeneration";
+
+export interface LoadingEvent {
+  type: LoadingType;
+  loading: boolean;
 }
 
 export interface ChatMessage {
@@ -96,7 +127,7 @@ export interface ChatMessage {
   };
   type?: string | null;
   options?: string[];
-  schedule?: SchedulePayload | null;
+  schedule?: SchedulePayload | ScheduleResponse | null;
   callRequest?: CallRequestPayload | null;
   description?: string | null;
   showScheduleForm?: boolean; // Flag to show schedule form

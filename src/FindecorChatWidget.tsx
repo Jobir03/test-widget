@@ -15,8 +15,8 @@ import { useChat } from "./hooks/useChat";
 import { createApiClient, type ApiClient } from "./services/api/apiClient";
 import ChatMessages from "./components/ChatMessages";
 import authService from "./services/chat/auth";
-import { TypingAnimation } from "./components/common/loaders/TypingAnimation/TypingAnimation";
 import type { FindecorChatWidgetProps } from "./types/FindecorChatWidget.types";
+import avatarImage from "./assets/images/chat-avatar.jpg";
 
 const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   apiBase,
@@ -50,6 +50,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     loadMoreMessages,
     hasMore,
     fetchingMore,
+    loadingStates,
   } = useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
@@ -311,12 +312,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
           <div className="fcw-launcher-content">
             {companyAvatar && (
               <div className="fcw-launcher-avatar">
-                <img
-                  src={
-                    "https://cdn-icons-png.flaticon.com/512/6858/6858504.png"
-                  }
-                  alt="Company"
-                />
+                <img src={avatarImage} alt="Company" />
               </div>
             )}
             <div className="fcw-launcher-text">
@@ -411,6 +407,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               isTyping={isTyping}
               isGeneratingImage={isGeneratingImage}
               onGeneratingImageChange={setIsGeneratingImage}
+              loadingStates={loadingStates}
               onScrollToBottom={() => {
                 if (messagesContainerRef.current) {
                   messagesContainerRef.current.scrollTop =
@@ -418,24 +415,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 }
               }}
             />
-            {(isTyping || isUploading) && !isGeneratingImage && (
-              <div className="fcw fcw-bubble bot">
-                {isUploading ? (
-                  <TypingAnimation
-                    mode="text"
-                    messages={[
-                      "Processing room details",
-                      "Detecting interior design style",
-                      "Extracting room color palette",
-                      "Estimating floor area",
-                      "Searching products",
-                    ]}
-                  />
-                ) : (
-                  <TypingAnimation mode="dots" />
-                )}
-              </div>
-            )}
             {error && isOnline && (
               <div className="fcw fcw-message">
                 <div
