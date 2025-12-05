@@ -80,7 +80,7 @@ const Widget = {
       };
       root.render(React.createElement(FindecorChatWidget, widgetProps));
     } catch (error) {
-      console.error("❌ Xatolik:", error);
+      console.error("❌ Error:", error);
     }
   },
 };

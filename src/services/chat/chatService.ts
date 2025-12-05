@@ -168,12 +168,12 @@ export const createChatService = (widgetKey: string) => {
             typeof secondElement === "object" &&
             "message" in secondElement
           ) {
-            errorMessage = secondElement.message || "Xatolik yuz berdi";
+            errorMessage = secondElement.message || "An error occurred";
           } else {
-            errorMessage = "Xatolik yuz berdi";
+            errorMessage = "An error occurred";
           }
         } else {
-          errorMessage = data?.message || "Xatolik yuz berdi";
+          errorMessage = data?.message || "An error occurred";
         }
 
         const errorChatMessage: ChatMessage = {

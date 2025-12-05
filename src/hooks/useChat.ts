@@ -279,7 +279,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       chatService.current
         .connectSocket(socketUrl, onNewMessage, onLoadingEvent)
         .catch(() => {
-          setError("Aloqa o'rnatishda xatolik");
+          setError("Connection error");
         });
     }
 
@@ -321,7 +321,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         console.error("Failed to reconnect after coming online:", error);
         // If reconnect fails with auth error (401), refresh token will be called automatically
         // by apiClient interceptor or socket error handler, which will then call authenticate if needed
-        setError("Qayta ulanishda xatolik");
+        setError("Reconnection error");
       }
     };
 

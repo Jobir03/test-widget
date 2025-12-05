@@ -65,7 +65,7 @@ export default function CallMeForm({
 
   const handleSubmit = async () => {
     if (!name || !phoneNumber) {
-      alert("Iltimos, barcha maydonlarni to'ldiring!");
+      alert("Please fill in all fields!");
       return;
     }
 

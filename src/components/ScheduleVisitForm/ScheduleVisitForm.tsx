@@ -24,6 +24,7 @@ export default function ScheduleVisitForm({
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const userDataLoadedRef = useRef(false);
   const [userData, setUserData] = useState<
     import("../../services/chat/auth").UserData | null
@@ -96,6 +97,9 @@ export default function ScheduleVisitForm({
   }, [widgetKey]);
 
   const handleSubmit = async () => {
+    // Clear previous errors
+    setError(null);
+
     // If no branches available, allow submission without branchId
     const requiresBranch = branches.length > 0;
     if (
@@ -105,18 +109,45 @@ export default function ScheduleVisitForm({
       !time ||
       (requiresBranch && !selectedBranchId)
     ) {
-      alert("Iltimos, barcha maydonlarni to'ldiring!");
+      setError("Please fill in all fields!");
+      return;
+    }
+
+    // Validate that the selected date and time is in the future
+    // This validation is already done in validateDateTime, but we check again here for safety
+    const isoDate = new Date(date);
+    
+    // Parse time string (format: "9:00 AM" or "1:00 PM")
+    const timeMatch = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!timeMatch) {
+      setError("Invalid time format");
+      return;
+    }
+    
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    const period = timeMatch[3].toUpperCase();
+    
+    // Convert to 24-hour format
+    if (period === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (period === "AM" && hours === 12) {
+      hours = 0;
+    }
+    
+    isoDate.setHours(hours, minutes, 0, 0);
+
+    // Check if the selected datetime is in the future
+    const now = new Date();
+    if (isoDate.getTime() <= now.getTime()) {
+      setError("Booked time must be in the future");
       return;
     }
 
     // Product is optional, so we don't require it
     try {
       setSubmitting(true);
-
-      const isoDate = new Date(date);
-      const [hours, minutesPart] = time.split(":");
-      const minutes = minutesPart?.slice(0, 2) || "00";
-      isoDate.setHours(Number(hours), Number(minutes), 0, 0);
+      setError(null);
 
       // Split name into firstName and lastName
       const nameParts = name.trim().split(/\s+/);
@@ -137,7 +168,9 @@ export default function ScheduleVisitForm({
       }
     } catch (e) {
       console.error(e);
-      alert(`Failed to schedule visit: ${e}`);
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to schedule visit";
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -171,20 +204,71 @@ export default function ScheduleVisitForm({
     return formatDateForInput(today);
   };
 
+  // Validate date and time combination
+  const validateDateTime = (selectedDate: Date | null, selectedTime: string) => {
+    if (!selectedDate || !selectedTime) {
+      setError(null);
+      return;
+    }
+
+    // Check if it's Sunday
+    if (selectedDate.getDay() === 0) {
+      setError("Sunday cannot be selected!");
+      return;
+    }
+
+    // Parse time string (format: "9:00 AM" or "1:00 PM")
+    const timeMatch = selectedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!timeMatch) {
+      setError(null);
+      return;
+    }
+
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    const period = timeMatch[3].toUpperCase();
+
+    // Convert to 24-hour format
+    if (period === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (period === "AM" && hours === 12) {
+      hours = 0;
+    }
+
+    const selectedDateTime = new Date(selectedDate);
+    selectedDateTime.setHours(hours, minutes, 0, 0);
+
+    // Check if the selected datetime is in the future
+    const now = new Date();
+    if (selectedDateTime.getTime() <= now.getTime()) {
+      setError("Booked time must be in the future");
+      return;
+    }
+
+    // Clear error if validation passes
+    setError(null);
+  };
+
   // Handle date input change
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value) {
       const selectedDate = new Date(value);
-      // Check if it's Sunday (day 0)
-      if (selectedDate.getDay() === 0) {
-        alert("Yakshanba kunini tanlash mumkin emas!");
-        return;
-      }
       setDate(selectedDate);
+      // Validate with current time selection
+      validateDateTime(selectedDate, time);
     } else {
       setDate(null);
+      setError(null);
     }
+  };
+
+  // Handle time change
+  const handleTimeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedTime = e.target.value;
+    setTime(selectedTime);
+    // Validate with current date selection
+    validateDateTime(date, selectedTime);
   };
 
   return (
@@ -276,7 +360,7 @@ export default function ScheduleVisitForm({
                   value={formatDateForInput(date)}
                   onChange={handleDateChange}
                   min={getTodayDate()}
-                  className="schedule-input"
+                  className={`schedule-input ${error && date && time ? "schedule-input-error" : ""}`}
                 />
               </div>
 
@@ -284,8 +368,8 @@ export default function ScheduleVisitForm({
                 <label className="schedule-label">Select Time</label>
                 <select
                   value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="schedule-select"
+                  onChange={handleTimeChange}
+                  className={`schedule-select ${error && date && time ? "schedule-select-error" : ""}`}
                 >
                   <option value="">Choose a time</option>
                   {times.map((t) => (
@@ -296,6 +380,12 @@ export default function ScheduleVisitForm({
                 </select>
               </div>
             </div>
+            
+            {error && date && time && (
+              <div className="schedule-error-message">
+                {error}
+              </div>
+            )}
 
             <button
               type="button"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "./ProductRecommendations.css";
 import { ChevronLeft, ChevronRight, Heart, Loader2 } from "lucide-react";
 import type { Product } from "../../services/chat/types";
@@ -110,7 +110,7 @@ export function ProductRecommendations({
 
   // Function to fetch and update homeImageUrl
   const fetchUserData = useRef(false);
-  const fetchUserDataFn = async () => {
+  const fetchUserDataFn = useCallback(async () => {
     // Prevent multiple API calls
     if (fetchUserData.current) {
       return;
@@ -135,13 +135,12 @@ export function ProductRecommendations({
       fetchUserData.current = false; // Allow retry on error
       // Don't set default URL on error
     }
-  };
+  }, []);
 
   // Fetch user data to get lastImageUrl on component mount (only once)
   useEffect(() => {
     fetchUserDataFn();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount
+  }, [fetchUserDataFn]);
 
   // Refresh homeImageUrl when image is uploaded
   useEffect(() => {
@@ -166,15 +165,9 @@ export function ProductRecommendations({
   const handleViewVisual = async () => {
     if (!currentProduct || !sendHomeGeneration) return;
 
-    // Use lastImageUrl from user data, return early if not available
-    if (!homeImageUrl) {
-      console.warn("Home image URL not available");
-      return;
-    }
+    // Use homeImageUrl if available, otherwise use empty string
+    const finalHomeImageUrl = homeImageUrl || "";
 
-    const finalHomeImageUrl = homeImageUrl;
-
-    // Productning birinchi rasmini olish
     let productImageUrl = "";
     if (currentProduct.images && currentProduct.images.length > 0) {
       const firstImage = currentProduct.images[0];
@@ -203,17 +196,20 @@ export function ProductRecommendations({
       return;
     }
 
+    // Default prompt for generating interior design - only send if home image is not available
+    const prompt = !homeImageUrl
+      ? "Generate a new interior design using the product_image, adding matching furniture and a cohesive style."
+      : "";
+
     try {
       setIsLoadingViewVisual(true);
       onGeneratingImageChange?.(true);
 
-      // Scroll qilish - messages container'ning eng pastiga scroll qilinadi
       setTimeout(() => {
         onScrollToBottom?.();
       }, 200);
 
-      await sendHomeGeneration(finalHomeImageUrl, productImageUrl, "");
-      // Loading state typing animation to'xtaguncha saqlanadi
+      await sendHomeGeneration(finalHomeImageUrl, productImageUrl, prompt);
     } catch (error) {
       console.error("Failed to send home generation:", error);
       setIsLoadingViewVisual(false);
@@ -221,7 +217,6 @@ export function ProductRecommendations({
     }
   };
 
-  // Typing to'xtaganda (message kelganda) loading state'ni to'xtatish
   useEffect(() => {
     if (!isTyping && isLoadingViewVisual) {
       setIsLoadingViewVisual(false);

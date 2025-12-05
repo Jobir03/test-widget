@@ -113,6 +113,16 @@
   border-color: #d1d5db;
 }
 
+.schedule-input-error {
+  border-color: #fca5a5 !important;
+  background-color: #fef2f2 !important;
+}
+
+.schedule-input-error:focus {
+  border-color: #f87171 !important;
+  background-color: #fee2e2 !important;
+}
+
 .schedule-input::placeholder {
   color: #9ca3af;
 }
@@ -150,6 +160,16 @@
   border-color: #d1d5db;
 }
 
+.schedule-select-error {
+  border-color: #fca5a5 !important;
+  background-color: #fef2f2 !important;
+}
+
+.schedule-select-error:focus {
+  border-color: #f87171 !important;
+  background-color: #fee2e2 !important;
+}
+
 .schedule-submit-button {
   padding: 9px 14px;
   background-color: #111827;
@@ -174,5 +194,17 @@
 .schedule-submit-button:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
+}
+
+.schedule-error-message {
+  padding: 8px 12px;
+  background-color: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  line-height: 1.4;
 }
 
