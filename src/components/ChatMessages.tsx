@@ -108,7 +108,369 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             </div>
             {msgs.map((msg) => (
               <div key={msg.id} className="fcw fcw-message">
-                {msg?.description && (
+                {/* Type-based rendering */}
+                {msg.type === "recommend" && (
+                  <>
+                    {/* Information (description) */}
+                    {msg.information && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
+                      >
+                        <div className="fcw fcw-message-text">
+                          {msg.information}
+                        </div>
+                        <span className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {/* Products */}
+                    {msg.products && msg.products.length > 0 && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
+                      >
+                        <ProductRecommendations
+                          products={msg.products}
+                          messageText={msg.information ?? undefined}
+                          sendHomeGeneration={sendHomeGeneration}
+                          isTyping={isTyping}
+                          onGeneratingImageChange={onGeneratingImageChange}
+                          onScrollToBottom={onScrollToBottom}
+                          onProductClick={(product) => {
+                            sendMessage(product.name);
+                          }}
+                        />
+                        <span className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {/* Question */}
+                    {msg.question && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
+                      >
+                        <div className="fcw fcw-message-text">
+                          {msg.question}
+                        </div>
+                        <span className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Type: qa - Simple text chat */}
+                {msg.type === "qa" && (
+                  <>
+                    {/* Information (if available) */}
+                    {msg.information && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
+                      >
+                        <div className="fcw fcw-message-text">
+                          {msg.information}
+                        </div>
+                        <span className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {/* Question */}
+                    {msg.question && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        } ${msg.isError ? "fcw-error-message" : ""}`}
+                        style={
+                          msg.isError
+                            ? {
+                                backgroundColor: "#fee2e2",
+                                color: "#991b1b",
+                                border: "1px solid #fca5a5",
+                              }
+                            : undefined
+                        }
+                      >
+                        <div className="fcw fcw-message-text">
+                          {msg.question}
+                        </div>
+                        <div className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Type: image_generation - Image generation */}
+                {msg.type === "image_generation" && (
+                  <>
+                    {/* Information (if available) */}
+                    {msg.information && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
+                      >
+                        <div className="fcw fcw-message-text">
+                          {msg.information}
+                        </div>
+                        <span className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {/* Images */}
+                    {msg.images && msg.images.length > 0 && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
+                      >
+                        <ImageMessage
+                          images={msg.images}
+                          onScrollToBottom={onScrollToBottom}
+                        />
+                        <span className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {/* Question (if available) */}
+                    {msg.question && (
+                      <div
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
+                      >
+                        <div className="fcw fcw-message-text">
+                          {msg.question}
+                        </div>
+                        <span className="fcw fcw-time">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Type: booking - Schedule visit card */}
+                {msg.type === "booking" && msg.schedule && (
+                  <>
+                    {(() => {
+                      const schedule = msg.schedule;
+                      // Type guard to check if it's ScheduleResponse (has populated relations)
+                      const isScheduleResponse = (
+                        s: typeof schedule
+                      ): s is import("../services/chat/types").ScheduleResponse => {
+                        return (
+                          s !== null &&
+                          typeof s === "object" &&
+                          ("branch" in s ||
+                            "product" in s ||
+                            "widgetUser" in s ||
+                            "customerName" in s ||
+                            "contactInfo" in s)
+                        );
+                      };
+
+                      const scheduleResponse = isScheduleResponse(schedule)
+                        ? schedule
+                        : null;
+                      const bookedTime = schedule?.bookedTime
+                        ? new Date(schedule.bookedTime)
+                        : null;
+                      const bookedTimeFormatted = bookedTime
+                        ? bookedTime.toLocaleString([], {
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : undefined;
+
+                      return (
+                        <>
+                          <div
+                            className="fcw fcw-schedule-card"
+                            style={{
+                              marginTop: 8,
+                              padding: "10px 12px",
+                              borderRadius: "14px",
+                              background: "#f9fafb",
+                              border: "1px solid #e5e7eb",
+                              fontSize: "12px",
+                              lineHeight: 1.5,
+                              display: "flex",
+                              gap: 8,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 4,
+                                borderRadius: "999px",
+                                background: "var(--fcw-accent)",
+                              }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  marginBottom: 4,
+                                  color: "#111827",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    fontSize: 12,
+                                    textTransform: "uppercase",
+                                    letterSpacing: 0.4,
+                                  }}
+                                >
+                                  Visit scheduled
+                                </span>
+                              </div>
+                              {scheduleResponse?.branch?.name && (
+                                <div style={{ color: "#4b5563" }}>
+                                  <span style={{ opacity: 0.8 }}>Branch:</span>{" "}
+                                  <strong>
+                                    {scheduleResponse.branch.name}
+                                  </strong>
+                                </div>
+                              )}
+                              {scheduleResponse?.product?.name && (
+                                <div style={{ color: "#4b5563" }}>
+                                  <span style={{ opacity: 0.8 }}>Product:</span>{" "}
+                                  <strong>
+                                    {scheduleResponse.product.name}
+                                  </strong>
+                                </div>
+                              )}
+                              {bookedTimeFormatted && (
+                                <div style={{ color: "#4b5563" }}>
+                                  <span style={{ opacity: 0.8 }}>Time:</span>{" "}
+                                  <strong>{bookedTimeFormatted}</strong>
+                                </div>
+                              )}
+                              {/* Customer name - check customerName first, then widgetUser */}
+                              {(scheduleResponse?.customerName ||
+                                scheduleResponse?.widgetUser?.firstName) && (
+                                <div
+                                  style={{
+                                    color: "#6b7280",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  <span style={{ opacity: 0.9 }}>
+                                    Customer:
+                                  </span>{" "}
+                                  {scheduleResponse?.customerName ||
+                                    scheduleResponse.widgetUser?.firstName}
+                                  {(scheduleResponse?.contactInfo ||
+                                    scheduleResponse?.widgetUser?.contact) && (
+                                    <span>
+                                      {" "}
+                                      (
+                                      {scheduleResponse?.contactInfo ||
+                                        scheduleResponse.widgetUser?.contact}
+                                      )
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Information (if available) */}
+                          {msg.information && (
+                            <div
+                              className={`fcw fcw-bubble ${
+                                msg.from === "user" ? "user" : "bot"
+                              }`}
+                            >
+                              <div className="fcw fcw-message-text">
+                                {msg.information}
+                              </div>
+                              <span className="fcw fcw-time">
+                                {new Date(msg.timestamp).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </span>
+                            </div>
+                          )}
+                          {/* Question (if available) */}
+                          {msg.question && (
+                            <div
+                              className={`fcw fcw-bubble ${
+                                msg.from === "user" ? "user" : "bot"
+                              }`}
+                            >
+                              <div
+                                className="fcw fcw-message-text"
+                                style={{ whiteSpace: "pre-line" }}
+                              >
+                                {msg.question}
+                              </div>
+                              <span className="fcw fcw-time">
+                                {new Date(msg.timestamp).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+
+                {/* Legacy support: description (for backward compatibility) */}
+                {!msg.type && msg.description && (
                   <div
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
@@ -125,7 +487,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     </span>
                   </div>
                 )}
-                {msg?.products && msg.products.length > 0 && (
+
+                {/* Legacy support: products without type */}
+                {!msg.type && msg.products && msg.products.length > 0 && (
                   <div
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
@@ -142,7 +506,6 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         sendMessage(product.name);
                       }}
                     />
-
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -151,7 +514,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     </span>
                   </div>
                 )}
-                {msg?.images && msg.images.length > 0 && (
+
+                {/* Legacy support: images without type */}
+                {!msg.type && msg.images && msg.images.length > 0 && (
                   <div
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
@@ -170,7 +535,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                   </div>
                 )}
 
-                {msg?.text && (
+                {/* Legacy support: text (for user messages and backward compatibility) */}
+                {!msg.type && msg.text && (
                   <div
                     className={`fcw fcw-bubble ${
                       msg.from === "user" ? "user" : "bot"
@@ -195,115 +561,133 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                   </div>
                 )}
 
-                {msg?.schedule &&
-                  (() => {
-                    const schedule = msg.schedule;
-                    // Type guard to check if it's ScheduleResponse (has populated relations)
-                    const isScheduleResponse = (
-                      s: typeof schedule
-                    ): s is import("../services/chat/types").ScheduleResponse => {
+                {/* Legacy support: schedule without type */}
+                {!msg.type && msg.schedule && (
+                  <>
+                    {(() => {
+                      const schedule = msg.schedule;
+                      // Type guard to check if it's ScheduleResponse (has populated relations)
+                      const isScheduleResponse = (
+                        s: typeof schedule
+                      ): s is import("../services/chat/types").ScheduleResponse => {
+                        return (
+                          s !== null &&
+                          typeof s === "object" &&
+                          ("branch" in s ||
+                            "product" in s ||
+                            "widgetUser" in s ||
+                            "customerName" in s ||
+                            "contactInfo" in s)
+                        );
+                      };
+
+                      const scheduleResponse = isScheduleResponse(schedule)
+                        ? schedule
+                        : null;
+                      const bookedTime = schedule?.bookedTime
+                        ? new Date(schedule.bookedTime)
+                        : null;
+                      const bookedTimeFormatted = bookedTime
+                        ? bookedTime.toLocaleString([], {
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : undefined;
+
                       return (
-                        s !== null &&
-                        typeof s === "object" &&
-                        ("branch" in s || "product" in s || "widgetUser" in s)
-                      );
-                    };
-
-                    const scheduleResponse = isScheduleResponse(schedule)
-                      ? schedule
-                      : null;
-                    const bookedTime = schedule?.bookedTime
-                      ? new Date(schedule.bookedTime)
-                      : null;
-                    const bookedTimeFormatted = bookedTime
-                      ? bookedTime.toLocaleString([], {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : undefined;
-
-                    return (
-                      <div
-                        className="fcw fcw-schedule-card"
-                        style={{
-                          marginTop: 8,
-                          padding: "10px 12px",
-                          borderRadius: "14px",
-                          background: "#f9fafb",
-                          border: "1px solid #e5e7eb",
-                          fontSize: "12px",
-                          lineHeight: 1.5,
-                          display: "flex",
-                          gap: 8,
-                        }}
-                      >
                         <div
+                          className="fcw fcw-schedule-card"
                           style={{
-                            width: 4,
-                            borderRadius: "999px",
-                            background: "var(--fcw-accent)",
+                            marginTop: 8,
+                            padding: "10px 12px",
+                            borderRadius: "14px",
+                            background: "#f9fafb",
+                            border: "1px solid #e5e7eb",
+                            fontSize: "12px",
+                            lineHeight: 1.5,
+                            display: "flex",
+                            gap: 8,
                           }}
-                        />
-                        <div style={{ flex: 1 }}>
+                        >
                           <div
                             style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                              marginBottom: 4,
-                              color: "#111827",
+                              width: 4,
+                              borderRadius: "999px",
+                              background: "var(--fcw-accent)",
                             }}
-                          >
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                fontSize: 12,
-                                textTransform: "uppercase",
-                                letterSpacing: 0.4,
-                              }}
-                            >
-                              Visit scheduled
-                            </span>
-                          </div>
-                          {scheduleResponse?.branch?.name && (
-                            <div style={{ color: "#4b5563" }}>
-                              <span style={{ opacity: 0.8 }}>Branch:</span>{" "}
-                              <strong>{scheduleResponse.branch.name}</strong>
-                            </div>
-                          )}
-                          {scheduleResponse?.product?.name && (
-                            <div style={{ color: "#4b5563" }}>
-                              <span style={{ opacity: 0.8 }}>Product:</span>{" "}
-                              <strong>{scheduleResponse.product.name}</strong>
-                            </div>
-                          )}
-                          {bookedTimeFormatted && (
-                            <div style={{ color: "#4b5563" }}>
-                              <span style={{ opacity: 0.8 }}>Time:</span>{" "}
-                              <strong>{bookedTimeFormatted}</strong>
-                            </div>
-                          )}
-                          {scheduleResponse?.widgetUser?.firstName && (
+                          />
+                          <div style={{ flex: 1 }}>
                             <div
                               style={{
-                                color: "#6b7280",
-                                marginTop: 2,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                marginBottom: 4,
+                                color: "#111827",
                               }}
                             >
-                              <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
-                              {scheduleResponse.widgetUser.firstName}
-                              {scheduleResponse.widgetUser.contact
-                                ? ` (${scheduleResponse.widgetUser.contact})`
-                                : ""}
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  fontSize: 12,
+                                  textTransform: "uppercase",
+                                  letterSpacing: 0.4,
+                                }}
+                              >
+                                Visit scheduled
+                              </span>
                             </div>
-                          )}
+                            {scheduleResponse?.branch?.name && (
+                              <div style={{ color: "#4b5563" }}>
+                                <span style={{ opacity: 0.8 }}>Branch:</span>{" "}
+                                <strong>{scheduleResponse.branch.name}</strong>
+                              </div>
+                            )}
+                            {scheduleResponse?.product?.name && (
+                              <div style={{ color: "#4b5563" }}>
+                                <span style={{ opacity: 0.8 }}>Product:</span>{" "}
+                                <strong>{scheduleResponse.product.name}</strong>
+                              </div>
+                            )}
+                            {bookedTimeFormatted && (
+                              <div style={{ color: "#4b5563" }}>
+                                <span style={{ opacity: 0.8 }}>Time:</span>{" "}
+                                <strong>{bookedTimeFormatted}</strong>
+                              </div>
+                            )}
+                            {/* Customer name - check customerName first, then widgetUser */}
+                            {(scheduleResponse?.customerName ||
+                              scheduleResponse?.widgetUser?.firstName) && (
+                              <div
+                                style={{
+                                  color: "#6b7280",
+                                  marginTop: 2,
+                                }}
+                              >
+                                <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
+                                {scheduleResponse?.customerName ||
+                                  scheduleResponse.widgetUser?.firstName}
+                                {(scheduleResponse?.contactInfo ||
+                                  scheduleResponse?.widgetUser?.contact) && (
+                                  <span>
+                                    {" "}
+                                    (
+                                    {scheduleResponse?.contactInfo ||
+                                      scheduleResponse.widgetUser?.contact}
+                                    )
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
+                  </>
+                )}
 
                 {msg?.callRequest &&
                   (() => {

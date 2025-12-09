@@ -475,8 +475,9 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               <button
                 className="schedule-visit"
                 onClick={() => {
-                  setShowScheduleForm(true);
-                  // Scroll to bottom when schedule form opens
+                  // Send "Showroom Visit" message to chat
+                  sendMessage("Showroom Visit");
+                  // Scroll to bottom after sending message
                   if (messagesContainerRef.current) {
                     setTimeout(() => {
                       if (messagesContainerRef.current) {

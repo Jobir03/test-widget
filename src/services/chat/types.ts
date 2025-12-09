@@ -1,13 +1,15 @@
 export interface ServerMessage {
   id: string;
-  text: string;
+  text?: string; // Legacy support
+  question?: string | null; // New field - replaces text for bot messages
+  information?: string | null; // New field - replaces description
   isAdmin: boolean;
   products: Product[];
   createdAt: string;
   updatedAt: string;
   images: string[];
   widgetUserId: string;
-  description: string | null;
+  description?: string | null; // Legacy support
   widgetUser: {
     id: string;
     firstName: string | null;
@@ -16,7 +18,7 @@ export interface ServerMessage {
     createdAt?: string;
     updatedAt?: string;
   };
-  type: string | null;
+  type: string | null; // "recommend" | "qa" | "image_generation" | "booking"
   options: string[];
   schedule?: SchedulePayload | null;
   callRequest?: CallRequestPayload | null;
@@ -83,6 +85,8 @@ export interface ScheduleResponse {
   firstName?: string;
   lastName?: string;
   contact?: string;
+  customerName?: string;
+  contactInfo?: string;
   branch?: {
     id: string;
     name: string;
@@ -114,7 +118,9 @@ export interface LoadingEvent {
 export interface ChatMessage {
   id: string; // server UUID
   from: "user" | "bot";
-  text: string;
+  text?: string; // Legacy support
+  question?: string | null; // New field - replaces text for bot messages
+  information?: string | null; // New field - replaces description
   images: string[];
   products: Product[];
   timestamp: Date;
@@ -125,11 +131,11 @@ export interface ChatMessage {
     name?: string;
     email?: string;
   };
-  type?: string | null;
+  type?: string | null; // "recommend" | "qa" | "image_generation" | "booking"
   options?: string[];
   schedule?: SchedulePayload | ScheduleResponse | null;
   callRequest?: CallRequestPayload | null;
-  description?: string | null;
+  description?: string | null; // Legacy support
   showScheduleForm?: boolean; // Flag to show schedule form
   showCallMeForm?: boolean; // Flag to show call me form
 }

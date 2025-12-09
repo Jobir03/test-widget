@@ -48,12 +48,14 @@ export const createChatService = (widgetKey: string) => {
   const transformServerMessage = (m: ServerMessage): ChatMessage => ({
     id: m.id,
     from: m.isAdmin ? "bot" : "user",
-    text: m.text,
+    text: m.text, // Legacy support
+    question: m.question ?? null, // New field
+    information: m.information ?? null, // New field
     images: m.images ?? [],
     products: m.products ?? [],
     timestamp: new Date(m.createdAt),
     isAdmin: m.isAdmin,
-    description: m.description ?? null,
+    description: m.description ?? null, // Legacy support
     user: m.widgetUser
       ? {
           id: m.widgetUser.id,

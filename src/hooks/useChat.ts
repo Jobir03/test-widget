@@ -42,7 +42,9 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const mapServerMessage = (m: ServerMessage): ChatMessage => ({
     id: m.id,
     from: m.isAdmin ? "bot" : "user",
-    text: m.text,
+    text: m.text, // Legacy support
+    question: m.question ?? null, // New field
+    information: m.information ?? null, // New field
     images: m.images ?? [],
     products: m.products ?? [],
     timestamp: new Date(m.createdAt),
@@ -57,7 +59,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         }
       : undefined,
     type: m.type,
-    description: m.description ?? null,
+    description: m.description ?? null, // Legacy support
     options: m.options ?? [],
     schedule: m.schedule ?? null,
     callRequest: m.callRequest ?? null,
@@ -280,7 +282,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         .connectSocket(socketUrl, onNewMessage, onLoadingEvent)
         .catch(() => {
           setError("Connection error");
-        });
+      });
     }
 
     return () => chatService.current?.disconnectSocket();

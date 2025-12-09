@@ -196,10 +196,8 @@ export function ProductRecommendations({
       return;
     }
 
-    // Default prompt for generating interior design - only send if home image is not available
-    const prompt = !homeImageUrl
-      ? "Generate a new interior design using the product_image, adding matching furniture and a cohesive style."
-      : "";
+    // Prompt is always empty - send empty string regardless of home image availability
+    const prompt = "";
 
     try {
       setIsLoadingViewVisual(true);
