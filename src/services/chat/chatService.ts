@@ -214,7 +214,12 @@ export const createChatService = (widgetKey: string) => {
       // Handle both single event and array of events
       const events = Array.isArray(data) ? data : [data];
       events.forEach((event) => {
-        if (event && typeof event === "object" && "type" in event && "loading" in event) {
+        if (
+          event &&
+          typeof event === "object" &&
+          "type" in event &&
+          "loading" in event
+        ) {
           onLoading?.(event as LoadingEvent);
         }
       });
@@ -363,14 +368,29 @@ export const createChatService = (widgetKey: string) => {
   ): Promise<void> => {
     if (!socket) throw new Error("Socket not initialized");
 
+    // Build payload with new format
+    const payload: {
+      product_photo: string;
+      room_photo?: string;
+      prompt?: string;
+    } = {
+      product_photo: productImageUrl,
+    };
+
+    // Add room_photo only if provided (optional)
+    if (homeImageUrl && homeImageUrl.trim() !== "") {
+      payload.room_photo = homeImageUrl;
+    }
+
+    // Add prompt only if provided (optional)
+    if (prompt && prompt.trim() !== "") {
+      payload.prompt = prompt;
+    }
+
     return new Promise<void>((resolve, reject) => {
       socket!.emit(
         "homeGeneration",
-        {
-          home_image_url: homeImageUrl,
-          product_image_url: productImageUrl,
-          prompt: prompt,
-        },
+        payload,
         (res: { error?: string } | null) => {
           if (res?.error) {
             if (res.error.includes("auth")) authService.clearToken();

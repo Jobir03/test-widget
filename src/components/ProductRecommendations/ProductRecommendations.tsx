@@ -281,7 +281,10 @@ export function ProductRecommendations({
                     <h4 className="fcw-product-name">{currentProduct.name}</h4>
                     {currentProduct.sku && (
                       <span className="fcw-product-sku">
-                        SKU: {currentProduct.sku}
+                        SKU:{" "}
+                        {currentProduct.sku.length > 5
+                          ? `${currentProduct.sku.slice(0, 5)}...`
+                          : currentProduct.sku}
                       </span>
                     )}
                   </div>
