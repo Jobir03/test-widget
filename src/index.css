@@ -50,6 +50,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -112,6 +113,7 @@
     opacity: 0;
     transform: translate(-50%, -45%);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, -50%);
@@ -201,14 +203,44 @@
   }
 }
 
+@keyframes slideUpMobile {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Mobile */
 @media (max-width: 680px) {
+  .fcw-dual-layout {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    /* Fallback */
+    height: 100dvh;
+    max-height: none;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    transform: none;
+    border-radius: 0;
+    animation: slideUpMobile 0.3s ease-out;
+  }
+
   .fcw-voice-panel {
     padding: 18px 14px;
     gap: 16px;
     min-height: 170px;
     flex-shrink: 0;
   }
+
+  /* Reverted hiding of idle panel */
 
   .fcw-voice-header {
     display: none;
@@ -227,6 +259,7 @@
     font-size: 12px;
   }
 }
+
 .fcw input,
 .fcw button,
 .fcw select,
@@ -239,6 +272,7 @@
 .fcw *::after {
   box-sizing: border-box;
 }
+
 .fcw-chat-widget {
   position: relative;
   display: flex;
@@ -365,6 +399,7 @@
   right: var(--fcw-auto-position);
   bottom: var(--fcw-auto-position);
 }
+
 .fcw-container.pos-TR,
 .fcw-launcher.pos-TR {
   top: var(--fcw-main-position);
@@ -372,6 +407,7 @@
   left: var(--fcw-auto-position);
   bottom: var(--fcw-auto-position);
 }
+
 .fcw-container.pos-BL,
 .fcw-launcher.pos-BL {
   bottom: var(--fcw-main-position);
@@ -383,6 +419,7 @@
 .fcw-container.size-small {
   width: var(--fcw-width-sm);
 }
+
 .fcw-container.size-large {
   width: var(--fcw-width-lg);
 }
@@ -392,6 +429,7 @@
     opacity: 0;
     transform: translateY(20px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -557,6 +595,7 @@
   box-shadow: var(--fcw-shadow-sm);
   border: 1px solid var(--fcw-border);
 }
+
 .fcw-message-text {
   max-width: 450px !important;
 }
@@ -667,6 +706,7 @@
   gap: 6px;
   background: var(--fcw-bg);
 }
+
 .fcw-input-container {
   display: flex;
   align-items: center;
@@ -801,7 +841,7 @@
   background: #dc2626;
 }
 
-.fcw-input > div:first-child span {
+.fcw-input>div:first-child span {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -937,6 +977,7 @@
     box-sizing: border-box;
   }
 }
+
 .voice-talk-container {
   width: 300px;
   height: 100;

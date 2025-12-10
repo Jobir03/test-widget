@@ -583,7 +583,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
     const showBars = mode === "listening";
 
     return (
-      <div className="fcw-voice-panel">
+      <div className={`fcw-voice-panel ${mode === "idle" ? "fcw-voice-panel-idle" : ""}`}>
         <header className="fcw-voice-header">
           <Sparkles size={18} />
           <div>
@@ -607,7 +607,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
               </span>
             )}
           </div>
-          <p>{buttonLabel}</p>
+          <p>{buttonLabel}.</p>
         </div>
       </div>
     );
