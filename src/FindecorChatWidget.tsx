@@ -5,16 +5,18 @@ import {
   MessageCircle,
   Minimize2,
   Paperclip,
-  Phone,
   RefreshCw,
   Send,
-  Trash2,
   X,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { useChat } from "./hooks/useChat";
 import { createApiClient, type ApiClient } from "./services/api/apiClient";
 import ChatMessages from "./components/ChatMessages";
-import VoiceTalkPanel from "./components/VoiceTalkPanel/VoiceTalkPanel";
+import VoiceTalkPanel, {
+  type VoiceTalkPanelRef,
+} from "./components/VoiceTalkPanel/VoiceTalkPanel";
 import authService from "./services/chat/auth";
 import type { FindecorChatWidgetProps } from "./types/FindecorChatWidget.types";
 import avatarImage from "./assets/images/chat-avatar.jpg";
@@ -41,7 +43,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     messages,
     quickReplyOptions,
     sendMessage,
-    sendHomeGeneration,
     loading,
     fetching,
     error,
@@ -51,7 +52,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     loadMoreMessages,
     hasMore,
     fetchingMore,
-    loadingStates,
   } = useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
@@ -59,12 +59,13 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ApiClient | null>(null);
+  const voiceTalkPanelRef = useRef<VoiceTalkPanelRef | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [showCallMeForm, setShowCallMeForm] = useState(false);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
   const [companyAvatar, setCompanyAvatar] = useState<string | null>(
     "https://cdn-icons-png.flaticon.com/512/6858/6858504.png"
@@ -172,6 +173,16 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     },
     [apiBase, widgetKey]
   );
+
+  const handleVoiceToggle = async () => {
+    if (!voiceTalkPanelRef.current) return;
+
+    if (voiceTalkPanelRef.current.isRecording) {
+      voiceTalkPanelRef.current.stopRecording();
+    } else {
+      await voiceTalkPanelRef.current.startRecording();
+    }
+  };
 
   const handleSend = async () => {
     if ((!input.trim() && !selectedFile) || loading || isUploading || !isOnline)
@@ -302,6 +313,23 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [open, hasMore, fetchingMore, fetching, loadMoreMessages]);
 
+  // Track voice recording state
+  useEffect(() => {
+    const checkRecordingState = () => {
+      if (voiceTalkPanelRef.current) {
+        setIsVoiceRecording(voiceTalkPanelRef.current.isRecording);
+      }
+    };
+
+    // Check immediately
+    checkRecordingState();
+
+    // Check periodically to update state (every 200ms for smooth updates)
+    const interval = setInterval(checkRecordingState, 200);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div ref={widgetRef} className="fcw-root">
       {!open && (
@@ -337,7 +365,13 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             className={`fcw-dual-layout ${fullscreen ? "fullscreen" : ""} `}
             style={{ borderRadius: borderRadius || undefined }}
           >
-            <VoiceTalkPanel />
+            <VoiceTalkPanel
+              ref={voiceTalkPanelRef}
+              apiBase={apiBase}
+              widgetKey={widgetKey}
+              sendMessage={sendMessage}
+              messages={messages}
+            />
             <div className="fcw-widget-shell">
               <div className={`fcw fcw-container  ${sizeClass} `}>
                 <div className="fcw-header">
@@ -408,8 +442,9 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     sendMessage={sendMessage}
                     showScheduleForm={showScheduleForm}
                     onCloseSchedule={() => setShowScheduleForm(false)}
+                    showCallMeForm={showCallMeForm}
+                    onCloseCallMe={() => setShowCallMeForm(false)}
                     widgetKey={widgetKey}
-                    products={[]}
                   />
                   {isTyping && (
                     <div className="fcw fcw-typing-row">
@@ -480,7 +515,19 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                   )}
                   <button
                     className="schedule-visit"
-                    onClick={() => setShowScheduleForm(true)}
+                    onClick={() => {
+                      // Send "Showroom Visit" message to chat
+                      sendMessage("Showroom Visit");
+                      // Scroll to bottom after sending message
+                      if (messagesContainerRef.current) {
+                        setTimeout(() => {
+                          if (messagesContainerRef.current) {
+                            messagesContainerRef.current.scrollTop =
+                              messagesContainerRef.current.scrollHeight;
+                          }
+                        }, 100);
+                      }
+                    }}
                   >
                     <Calendar size={16} />
                     Schedule Visit
@@ -509,9 +556,8 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     />
                     <label
                       htmlFor="file-upload"
-                      className={`fcw-file-upload-label${
-                        !isOnline || loading || isUploading ? " disabled" : ""
-                      }`}
+                      className={`fcw-file-upload-label${!isOnline || loading || isUploading ? " disabled" : ""
+                        }`}
                     >
                       <Paperclip size={20} />
                     </label>
@@ -524,15 +570,34 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                       disabled={loading || isUploading || !isOnline}
                     />
                     <button
-                      onClick={handleSend}
+                      onClick={
+                        input.trim() || selectedFile
+                          ? handleSend
+                          : handleVoiceToggle
+                      }
                       disabled={
                         !isOnline ||
-                        ((loading || isUploading) &&
+                        (input.trim() || selectedFile
+                          ? (loading || isUploading) &&
                           !input.trim() &&
-                          !selectedFile)
+                          !selectedFile
+                          : false)
+                      }
+                      className={
+                        !input.trim() && !selectedFile && isVoiceRecording
+                          ? "fcw-voice-active"
+                          : ""
                       }
                     >
-                      {loading || isUploading ? "..." : <Send size={18} />}
+                      {loading || isUploading ? (
+                        "..."
+                      ) : input.trim() || selectedFile ? (
+                        <Send size={18} />
+                      ) : isVoiceRecording ? (
+                        <MicOff size={18} />
+                      ) : (
+                        <Mic size={18} />
+                      )}
                     </button>
                   </div>
                 </div>

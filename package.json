@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/hark": "^1.2.5",
     "@types/socket.io-client": "^1.4.36",
     "axios": "^1.12.2",
+    "hark": "^1.2.3",
     "lucide-react": "^0.545.0",
     "react": "^19.1.1",
     "react-calendar": "^6.0.0",

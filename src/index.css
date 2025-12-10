@@ -793,6 +793,14 @@
   cursor: not-allowed;
 }
 
+.fcw-input button.fcw-voice-active {
+  background: #ef4444;
+}
+
+.fcw-input button.fcw-voice-active:hover:not(:disabled) {
+  background: #dc2626;
+}
+
 .fcw-input > div:first-child span {
   flex: 1;
   overflow: hidden;

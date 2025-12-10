@@ -240,23 +240,22 @@ export function ProductRecommendations({
       <div className="carousel-viewport">
         <div
           key={currentIndex}
-          className={`product-grid ${
-            direction === "next" ? "slide-next" : "slide-prev"
-          }`}
+          className={`product-grid ${direction === "next" ? "slide-next" : "slide-prev"
+            }`}
         >
           <div
             ref={productCardRef}
             className="product-card"
-            // onClick={() => handleProductRedirect(currentProduct.product_url)}
-            // onClick={(e) => {
-            //   if (currentProduct?.product_url) {
-            //     e.preventDefault();
-            //     e.stopPropagation();
-            //     window.location.replace(currentProduct.product_url);
-            //   } else {
-            //     onProductClick?.(currentProduct);
-            //   }
-            // }}
+          // onClick={() => handleProductRedirect(currentProduct.product_url)}
+          // onClick={(e) => {
+          //   if (currentProduct?.product_url) {
+          //     e.preventDefault();
+          //     e.stopPropagation();
+          //     window.location.replace(currentProduct.product_url);
+          //   } else {
+          //     onProductClick?.(currentProduct);
+          //   }
+          // }}
           >
             <div className="product-content">
               <div className="product-image-container">
