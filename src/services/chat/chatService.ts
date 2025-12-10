@@ -58,13 +58,13 @@ export const createChatService = (widgetKey: string) => {
     description: m.description ?? null, // Legacy support
     user: m.widgetUser
       ? {
-          id: m.widgetUser.id,
-          name:
-            [m.widgetUser.firstName, m.widgetUser.lastName]
-              .filter(Boolean)
-              .join(" ") || undefined,
-          email: m.widgetUser.email || undefined,
-        }
+        id: m.widgetUser.id,
+        name:
+          [m.widgetUser.firstName, m.widgetUser.lastName]
+            .filter(Boolean)
+            .join(" ") || undefined,
+        email: m.widgetUser.email || undefined,
+      }
       : undefined,
     type: m.type,
     options: m.options ?? [],
@@ -410,7 +410,6 @@ export const createChatService = (widgetKey: string) => {
   ): Promise<void> => {
     if (!socket) throw new Error("Socket not initialized");
 
-    // Build payload with new format
     const payload: {
       product_photo: string;
       room_photo?: string;

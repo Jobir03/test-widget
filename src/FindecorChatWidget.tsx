@@ -43,6 +43,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     messages,
     quickReplyOptions,
     sendMessage,
+    sendHomeGeneration,
     loading,
     fetching,
     error,
@@ -440,6 +441,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     messages={messages}
                     fetching={fetching}
                     sendMessage={sendMessage}
+                    sendHomeGeneration={sendHomeGeneration}
                     showScheduleForm={showScheduleForm}
                     onCloseSchedule={() => setShowScheduleForm(false)}
                     showCallMeForm={showCallMeForm}

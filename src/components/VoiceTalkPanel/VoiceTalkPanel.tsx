@@ -60,6 +60,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
     const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
     const processingCountRef = useRef<number>(0);
     const lastReadMessageIdRef = useRef<string | null>(null);
+    const isVoiceActiveRef = useRef<boolean>(false);
 
 
     const status = useMemo(
@@ -403,6 +404,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         mediaRecorderRef.current = mediaRecorder;
         setIsRecording(true);
         isRecordingRef.current = true; // Force ref update immediately
+        isVoiceActiveRef.current = true;
 
         await readFirstBotMessage();
 
@@ -426,6 +428,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       // Update state first so onstop knows we are done
       setIsRecording(false);
       isRecordingRef.current = false; // Force ref update immediately
+      isVoiceActiveRef.current = false;
 
       if (harkRef.current) {
         harkRef.current.stop();
@@ -504,7 +507,9 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       const lastMessage = messages[messages.length - 1];
 
       // Check if it's an admin message and we haven't read it yet
+      // AND ensure voice session is actively running (prevent auto-read when panel is just open but idle)
       if (
+        isVoiceActiveRef.current &&
         lastMessage.isAdmin &&
         lastMessage.id !== lastReadMessageIdRef.current
       ) {
