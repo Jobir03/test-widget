@@ -37,6 +37,7 @@ interface ChatMessagesProps {
   onGeneratingImageChange?: (isGenerating: boolean) => void;
   loadingStates?: Record<LoadingType, boolean>;
   onScrollToBottom?: () => void;
+  onCloseChat?: () => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -60,6 +61,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   },
   onScrollToBottom,
   widgetKey,
+  onCloseChat,
 }) => {
   const formatDate = (date: Date) =>
     `${String(date.getDate()).padStart(2, "0")}/${String(
@@ -144,6 +146,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                           onProductClick={(product) => {
                             sendMessage(product.name);
                           }}
+                          onClose={onCloseChat}
                         />
                         <span className="fcw fcw-time">
                           {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -493,6 +496,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                       onProductClick={(product) => {
                         sendMessage(product.name);
                       }}
+                      onClose={onCloseChat}
                     />
                     <span className="fcw fcw-time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {

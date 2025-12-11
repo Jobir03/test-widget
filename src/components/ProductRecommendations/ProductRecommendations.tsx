@@ -16,6 +16,7 @@ type ProductRecommendationsProps = {
   isTyping?: boolean;
   onGeneratingImageChange?: (isGenerating: boolean) => void;
   onScrollToBottom?: () => void;
+  onClose?: () => void;
 };
 // ProductRecommendations component
 export function ProductRecommendations({
@@ -25,6 +26,7 @@ export function ProductRecommendations({
   isTyping = false,
   onGeneratingImageChange,
   onScrollToBottom,
+  onClose,
 }: ProductRecommendationsProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
@@ -101,10 +103,13 @@ export function ProductRecommendations({
 
       iframe.addEventListener("load", handleLoad);
       iframe.src = url;
+      // Close the chat widget
       setTimeout(() => {
         setIsLoadingDetails(false);
         iframe.removeEventListener("load", handleLoad);
+        onClose?.();
       }, 10000);
+
     }
   };
 

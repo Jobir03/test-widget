@@ -7,20 +7,26 @@ import {
   useImperativeHandle,
   forwardRef,
 } from "react";
-import { Mic, Sparkles } from "lucide-react";
+import { Mic, Sparkles, Volume2, VolumeX } from "lucide-react";
 import hark from "hark";
 import "./VoiceTalkPanel.css";
 import { createApiClient, type ApiClient } from "../../services/api/apiClient";
 import { createVoiceTalkService } from "../../services/chat/voice-talk";
 import type { ChatMessage } from "../../services/chat/types";
 
-type VoiceMode = "idle" | "listening" | "processing" | "responding";
+type VoiceMode =
+  | "idle"
+  | "listening"
+  | "processing"
+  | "responding"
+  | "initializing";
 
 interface VoiceTalkPanelProps {
   apiBase: string;
   widgetKey: string;
   sendMessage: (text: string, imageUrl?: string) => Promise<void>;
   messages: ChatMessage[];
+  onStateChange?: (isRecording: boolean) => void;
 }
 
 export interface VoiceTalkPanelRef {
@@ -28,20 +34,62 @@ export interface VoiceTalkPanelRef {
   stopRecording: () => void;
   isRecording: boolean;
   mode: VoiceMode;
+  toggleMute: () => void;
+  isAgentMuted: boolean;
 }
 
+// Module-level refs to persist across component mounts/unmounts
+const lastReadMessageIdRef = { current: null as string | null };
+const hasReadFirstMessageRef = { current: false };
+
+// Helper to find the latest bot message (most recent timestamp)
+const findLatestBotMessage = (messages: ChatMessage[]) => {
+  if (messages.length === 0) return null;
+  // Sort by timestamp descending (newest first)
+  const sorted = [...messages].sort((a, b) => {
+    const tA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+    const tB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+    return tB - tA;
+  });
+
+  return sorted.find(msg => msg.from === "bot" || msg.isAdmin === true) || null;
+};
+
 const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
-  ({ apiBase, widgetKey, sendMessage, messages }, ref) => {
-    const [mode, setMode] = useState<VoiceMode>("idle");
+  ({ apiBase, widgetKey, sendMessage, messages, onStateChange }, ref) => {
+    const [mode, setMode] = useState<VoiceMode>("initializing");
     const [levels, setLevels] = useState([0.25, 0.5, 0.35]);
     const [isSupported, setIsSupported] = useState(true);
     const [isRecording, setIsRecording] = useState(false);
+    const [isAgentMuted, setIsAgentMuted] = useState(false);
+    const [isMicActive, setIsMicActive] = useState(false); // To signal user intent
+
+    // Refs for state access inside callbacks/effects without deps
     const isRecordingRef = useRef(false);
+    const isAgentMutedRef = useRef(false);
 
     // Sync ref with state
     useEffect(() => {
       isRecordingRef.current = isRecording;
-    }, [isRecording]);
+      onStateChange?.(isRecording);
+    }, [isRecording, onStateChange]);
+
+    useEffect(() => {
+      isAgentMutedRef.current = isAgentMuted;
+      // Stop current audio if muted
+      if (isAgentMuted && audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        if (mode === "responding") {
+          // If we were responding and got muted, go back to listening/idle
+          if (isRecordingRef.current) {
+            setMode("listening");
+          } else {
+            setMode("idle");
+          }
+        }
+      }
+    }, [isAgentMuted, mode]);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -49,7 +97,9 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
     const levelTimerRef = useRef<number | null>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const harkRef = useRef<any>(null);
-    const levelLogCounterRef = useRef<number>(0); // For periodic level logging
+
+    const levelLogCounterRef = useRef<number>(0);
+
     const apiClientRef = useRef<ApiClient | null>(null);
     const voiceTalkServiceRef = useRef<ReturnType<
       typeof createVoiceTalkService
@@ -58,18 +108,22 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+    const audioOutputContextRef = useRef<AudioContext | null>(null);
+    const audioOutputAnalyserRef = useRef<AnalyserNode | null>(null);
+    const audioOutputDataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(
+      null
+    );
     const processingCountRef = useRef<number>(0);
-    const lastReadMessageIdRef = useRef<string | null>(null);
-    const isVoiceActiveRef = useRef<boolean>(false);
-
+    const hasInitializedRef = useRef<boolean>(false);
 
     const status = useMemo(
       () =>
       ({
-        idle: "Tap to describe your space",
+        initializing: "Connecting...",
+        idle: "Ready",
         listening: "Listening…",
         processing: "Processing…",
-        responding: "Assistant is speaking…",
+        responding: "Speaking…",
       }[mode]),
       [mode]
     );
@@ -95,8 +149,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
 
     const startLevelAnimation = () => {
       if (levelTimerRef.current) return;
-
-      levelLogCounterRef.current = 0; // Reset log counter
+      levelLogCounterRef.current = 0;
 
       if (!audioContextRef.current && streamRef.current) {
         try {
@@ -118,7 +171,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
           );
 
           analyser.fftSize = 256;
-          analyser.smoothingTimeConstant = 0.3; // Lower for faster response to silence
+          analyser.smoothingTimeConstant = 0.3;
           source.connect(analyser);
 
           audioContextRef.current = audioContext;
@@ -133,7 +186,31 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       }
 
       levelTimerRef.current = window.setInterval(() => {
-        if (analyserRef.current && dataArrayRef.current) {
+        // Check if we're analyzing audio output (agent speaking)
+        if (audioOutputAnalyserRef.current && audioOutputDataArrayRef.current) {
+          const dataArray = audioOutputDataArrayRef.current;
+          audioOutputAnalyserRef.current.getByteFrequencyData(dataArray);
+
+          const bufferLength = dataArray.length;
+          const chunkSize = Math.floor(bufferLength / 3);
+
+          const bar1 = Array.from(dataArray.slice(0, chunkSize));
+          const bar2 = Array.from(dataArray.slice(chunkSize, chunkSize * 2));
+          const bar3 = Array.from(dataArray.slice(chunkSize * 2));
+
+          const avg1 = bar1.reduce((a, b) => a + b, 0) / bar1.length / 255;
+          const avg2 = bar2.reduce((a, b) => a + b, 0) / bar2.length / 255;
+          const avg3 = bar3.reduce((a, b) => a + b, 0) / bar3.length / 255;
+
+          levelLogCounterRef.current++;
+
+          setLevels([
+            Math.max(0.1, avg1 * 1.8),
+            Math.max(0.1, avg2 * 1.8),
+            Math.max(0.1, avg3 * 1.8),
+          ]);
+        } else if (analyserRef.current && dataArrayRef.current) {
+          // Analyzing microphone input (user speaking)
           const dataArray = dataArrayRef.current;
           analyserRef.current.getByteFrequencyData(dataArray);
 
@@ -147,21 +224,9 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
           const avg1 = bar1.reduce((a, b) => a + b, 0) / bar1.length / 255;
           const avg2 = bar2.reduce((a, b) => a + b, 0) / bar2.length / 255;
           const avg3 = bar3.reduce((a, b) => a + b, 0) / bar3.length / 255;
-          const overallLevel = (avg1 + avg2 + avg3) / 3;
-          const silenceThreshold = 0.15; // Adjusted for better silence detection
 
-          // Log level every 2 seconds for debugging
           levelLogCounterRef.current++;
-          if (levelLogCounterRef.current % 20 === 0 && isRecording) {
-            console.log(
-              `[Level] 🎤 Audio: ${overallLevel.toFixed(
-                3
-              )} | Threshold: ${silenceThreshold} | ${overallLevel < silenceThreshold ? "🔇 QUIET" : "🔊 SPEAKING"
-              }`
-            );
-          }
 
-          // Manual silence detection removed in favor of hark
           setLevels([
             Math.max(0.1, avg1 * 1.5),
             Math.max(0.1, avg2 * 1.5),
@@ -185,64 +250,147 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       }
       analyserRef.current = null;
       dataArrayRef.current = null;
+
+      if (audioOutputContextRef.current) {
+        audioOutputContextRef.current.close().catch(console.error);
+        audioOutputContextRef.current = null;
+      }
+      audioOutputAnalyserRef.current = null;
+      audioOutputDataArrayRef.current = null;
+
       levelLogCounterRef.current = 0;
 
       setLevels([0.25, 0.25, 0.25]);
     };
 
-    const textToSpeech = useCallback(
-      async (text: string): Promise<void> => {
-        if (!voiceTalkServiceRef.current || !text.trim()) return;
+    const textToSpeech = useCallback(async (text: string): Promise<void> => {
+      if (
+        !voiceTalkServiceRef.current ||
+        !text.trim() ||
+        isAgentMutedRef.current
+      )
+        return;
 
-        try {
-          const response = await voiceTalkServiceRef.current.textToSpeech(
-            text,
-            {
-              voiceName: "Sulafat",
+      try {
+        setMode("responding");
+
+        const response = await voiceTalkServiceRef.current.textToSpeech(text, {
+          voiceName: "Sulafat",
+        });
+
+        if (isAgentMutedRef.current) {
+          setMode(isRecordingRef.current ? "listening" : "idle");
+          return;
+        }
+
+        if (response.audioContent) {
+          const audioData = `data:${response.contentType || "audio/mpeg"
+            };base64,${response.audioContent}`;
+
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = "";
+          }
+
+          const audio = new Audio(audioData);
+          audioRef.current = audio;
+
+          // Setup audio output analyzer for visualization
+          try {
+            const AudioContextClass =
+              window.AudioContext ||
+              (
+                window as typeof window & {
+                  webkitAudioContext?: typeof AudioContext;
+                }
+              ).webkitAudioContext;
+
+            if (AudioContextClass) {
+              const audioOutputContext = new AudioContextClass();
+              const audioOutputAnalyser = audioOutputContext.createAnalyser();
+              const audioSource =
+                audioOutputContext.createMediaElementSource(audio);
+
+              audioOutputAnalyser.fftSize = 256;
+              audioOutputAnalyser.smoothingTimeConstant = 0.8;
+              audioSource.connect(audioOutputAnalyser);
+              audioOutputAnalyser.connect(audioOutputContext.destination);
+
+              audioOutputContextRef.current = audioOutputContext;
+              audioOutputAnalyserRef.current = audioOutputAnalyser;
+              const buffer = new ArrayBuffer(
+                audioOutputAnalyser.frequencyBinCount
+              );
+              audioOutputDataArrayRef.current = new Uint8Array(
+                buffer
+              ) as Uint8Array<ArrayBuffer>;
+
+              // Start animation for audio output
+              startLevelAnimation();
             }
-          );
+          } catch (error) {
+            console.error("Error setting up audio output analyzer:", error);
+          }
 
-          if (response.audioContent) {
-            const audioData = `data:${response.contentType || "audio/mpeg"
-              };base64,${response.audioContent}`;
+          await new Promise<void>((resolve, reject) => {
+            audio.onended = () => {
+              // Cleanup audio output analyzer
+              if (audioOutputContextRef.current) {
+                audioOutputContextRef.current.close().catch(console.error);
+                audioOutputContextRef.current = null;
+              }
+              audioOutputAnalyserRef.current = null;
+              audioOutputDataArrayRef.current = null;
 
-            if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current.src = "";
-            }
+              const stillRecording =
+                mediaRecorderRef.current?.state === "recording";
+              if (stillRecording) {
+                setMode("listening");
+              } else {
+                setMode("idle");
+                stopLevelAnimation();
+              }
+              resolve();
+            };
+            audio.onerror = reject;
 
-            const audio = new Audio(audioData);
-            audioRef.current = audio;
+            // Handle autoplay restrictions
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((error) => {
+                console.error("Auto-play prevented:", error);
+                // Cleanup on error
+                if (audioOutputContextRef.current) {
+                  audioOutputContextRef.current.close().catch(console.error);
+                  audioOutputContextRef.current = null;
+                }
+                audioOutputAnalyserRef.current = null;
+                audioOutputDataArrayRef.current = null;
 
-            await new Promise<void>((resolve, reject) => {
-              audio.onended = () => {
-                // Check current recording state at the time audio ends
+                // If blocked, we just revert state
                 const stillRecording =
                   mediaRecorderRef.current?.state === "recording";
                 if (stillRecording) {
                   setMode("listening");
                 } else {
                   setMode("idle");
+                  stopLevelAnimation();
                 }
-                resolve();
-              };
-              audio.onerror = reject;
-              audio.play().catch(reject);
-            });
-          }
-        } catch (error) {
-          console.error("TTS API error:", error);
-          const stillRecording =
-            mediaRecorderRef.current?.state === "recording";
-          if (stillRecording) {
-            setMode("listening");
-          } else {
-            setMode("idle");
-          }
+                reject(error);
+              });
+            }
+          });
         }
-      },
-      [] // Remove isRecording dependency to prevent infinite loop
-    );
+      } catch (error) {
+        console.error("TTS API error:", error);
+        const stillRecording = mediaRecorderRef.current?.state === "recording";
+        if (stillRecording) {
+          setMode("listening");
+        } else {
+          setMode("idle");
+        }
+      }
+    }, []);
 
     const processCurrentSegment = useCallback(async () => {
       if (audioChunksRef.current.length === 0) {
@@ -252,17 +400,15 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       processingCountRef.current++;
       setMode("processing");
 
-      // Process all chunks in the current buffer
       const chunksToProcess = [...audioChunksRef.current];
-      audioChunksRef.current = []; // Clear buffer immediately for next segment
+      audioChunksRef.current = [];
 
       const segmentBlob = new Blob(chunksToProcess, {
         type: "audio/webm;codecs=opus",
       });
 
       console.log(
-        `[STT] Processing segment: ${chunksToProcess.length} chunks, ${segmentBlob.size
-        } bytes`
+        `[STT] Processing segment: ${chunksToProcess.length} chunks, ${segmentBlob.size} bytes`
       );
 
       if (segmentBlob.size > 0) {
@@ -288,7 +434,6 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
 
       processingCountRef.current--;
 
-      // Check ref to avoid stale closure issues
       if (isRecordingRef.current) {
         if (processingCountRef.current > 0) {
           setMode("processing");
@@ -300,14 +445,13 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       }
     }, [sendMessage]);
 
-
-
-    const startRecording = async () => {
+    const startRecording = useCallback(async () => {
       // Cleanup any existing recorder to prevent ghosts
       if (mediaRecorderRef.current) {
-        console.warn("[VoiceTalkPanel] Cleaning up previous recorder before starting new one");
+        console.warn(
+          "[VoiceTalkPanel] Cleaning up previous recorder before starting new one"
+        );
         const oldRecorder = mediaRecorderRef.current;
-        // Remove event listeners to prevent "restart" logic or data collection
         oldRecorder.onstop = null;
         oldRecorder.ondataavailable = null;
 
@@ -317,13 +461,11 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         mediaRecorderRef.current = null;
       }
 
-      // Also stop old stream if exists
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
 
-      // Stop hark
       if (harkRef.current) {
         harkRef.current.stop();
         harkRef.current = null;
@@ -341,19 +483,40 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
           },
         });
 
-        // Initialize hark for silence detection
         const speechEvents = hark(stream, {
           interval: 100,
           threshold: -50,
           history: 10,
         });
 
+        speechEvents.on("speaking", () => {
+          console.log("[Hark] 🗣️ User started speaking");
+          // If agent is speaking, stop the agent audio
+          if (audioRef.current && !audioRef.current.paused) {
+            console.log(
+              "[Hark] 🛑 Stopping agent speech because user started speaking"
+            );
+            audioRef.current.pause();
+            audioRef.current.src = "";
+
+            // Cleanup audio output analyzer
+            if (audioOutputContextRef.current) {
+              audioOutputContextRef.current.close().catch(console.error);
+              audioOutputContextRef.current = null;
+            }
+            audioOutputAnalyserRef.current = null;
+            audioOutputDataArrayRef.current = null;
+
+            // Switch to listening mode
+            setMode("listening");
+          }
+        });
+
         speechEvents.on("stopped_speaking", () => {
-          console.log("[Hark] 🔇 Stopped speaking. Restarting recorder to finalize file...");
-          if (
-            mediaRecorderRef.current?.state === "recording"
-          ) {
-            // Stop the recorder. This triggers 'onstop' where we process the file and restart if needed.
+          console.log(
+            "[Hark] 🔇 Stopped speaking. Restarting recorder to finalize file..."
+          );
+          if (mediaRecorderRef.current?.state === "recording") {
             mediaRecorderRef.current.stop();
           }
         });
@@ -364,8 +527,28 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         audioChunksRef.current = [];
         processingCountRef.current = 0;
 
+        const getSupportedMimeType = () => {
+          const types = [
+            "audio/webm;codecs=opus",
+            "audio/webm",
+            "audio/mp4",
+            "audio/mpeg",
+            "audio/wav",
+            "audio/aac",
+          ];
+          for (const type of types) {
+            if (MediaRecorder.isTypeSupported(type)) {
+              return type;
+            }
+          }
+          return undefined; // Let browser interpret default
+        };
+
+        const mimeType = getSupportedMimeType();
+        console.log("[VoiceTalkPanel] Using MIME type:", mimeType);
+
         const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: "audio/webm;codecs=opus",
+          mimeType,
         });
 
         mediaRecorder.ondataavailable = (event) => {
@@ -377,36 +560,27 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         mediaRecorder.onstop = () => {
           console.log("[VoiceTalkPanel] MediaRecorder stopped");
 
-          // Should we process what we have? Yes.
           if (audioChunksRef.current.length > 0) {
             void processCurrentSegment();
           }
 
-          // If we are still "recording" (in the React state sense), this was an auto-restart.
-          // So we should start recording again immediately.
           if (isRecordingRef.current) {
             console.log("[VoiceTalkPanel] Auto-restarting recorder...");
-            // Small delay to ensure clean state? Usually fine to start immediately.
             mediaRecorder.start(100);
           } else {
-            // This was a manual stop. Clean up everything.
             stopLevelAnimation();
             stream.getTracks().forEach((track) => track.stop());
             streamRef.current = null;
           }
         };
 
-        if (!MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-          console.warn("WebM Opus not supported, trying default");
-        }
+
 
         mediaRecorder.start(100);
         mediaRecorderRef.current = mediaRecorder;
         setIsRecording(true);
-        isRecordingRef.current = true; // Force ref update immediately
-        isVoiceActiveRef.current = true;
-
-        await readFirstBotMessage();
+        isRecordingRef.current = true;
+        setIsMicActive(true);
 
         setTimeout(() => {
           startLevelAnimation();
@@ -420,125 +594,90 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         setIsSupported(false);
         setMode("idle");
       }
-    };
+    }, [mode, processCurrentSegment]);
 
-    const stopRecording = () => {
+    const stopRecording = useCallback(() => {
       console.log("[VoiceTalkPanel] Stopping recording...");
 
-      // Update state first so onstop knows we are done
       setIsRecording(false);
-      isRecordingRef.current = false; // Force ref update immediately
-      isVoiceActiveRef.current = false;
+      isRecordingRef.current = false;
+      setIsMicActive(false);
 
       if (harkRef.current) {
         harkRef.current.stop();
         harkRef.current = null;
       }
 
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
         mediaRecorderRef.current.stop();
       }
-    };
+    }, []);
 
-    const readFirstBotMessage = useCallback(async () => {
-      if (messages.length === 0) {
-        setMode("listening");
+    const readLastRelevantMessage = useCallback(async () => {
+      const lastBotMessage = findLatestBotMessage(messages);
+
+      if (!lastBotMessage) return;
+
+      const isFirstMessage = !hasReadFirstMessageRef.current;
+
+      if (!isFirstMessage && lastBotMessage.id === lastReadMessageIdRef.current)
+        return;
+      if (isAgentMutedRef.current) {
+        lastReadMessageIdRef.current = lastBotMessage.id;
+        if (isFirstMessage) {
+          hasReadFirstMessageRef.current = true;
+        }
         return;
       }
 
-      let firstBotMessage: ChatMessage | null = null;
-
-      for (let i = 0; i < messages.length; i++) {
-        const message = messages[i];
-        if (message.from === "bot") {
-          firstBotMessage = message;
-          break;
-        }
+      lastReadMessageIdRef.current = lastBotMessage.id;
+      if (isFirstMessage) {
+        hasReadFirstMessageRef.current = true;
       }
 
-      if (firstBotMessage) {
-        lastReadMessageIdRef.current = firstBotMessage.id;
-        // First try information and question
-        let textToSpeak = [
-          firstBotMessage.information,
-          firstBotMessage.question,
-        ]
-          .filter(Boolean)
-          .join(". ");
+      // Logic: Information + Question. If both are empty, fallback to Text.
+      const structuredSpeach = [lastBotMessage.information, lastBotMessage.question]
+        .filter(Boolean)
+        .join(". ");
 
-        // If information and question are both null/empty, use text as fallback
-        if (!textToSpeak.trim() && firstBotMessage.text) {
-          textToSpeak = firstBotMessage.text;
-        }
+      let textToSpeak = structuredSpeach;
 
-        if (textToSpeak.trim()) {
-          setMode("responding");
-          try {
-            await textToSpeech(textToSpeak);
-          } catch (error) {
-            console.error("Error in text-to-speech:", error);
-            const stillRecording =
-              mediaRecorderRef.current?.state === "recording";
-            if (stillRecording) {
-              setMode("listening");
-            } else {
-              setMode("idle");
-            }
-          }
-        } else {
-          const stillRecording =
-            mediaRecorderRef.current?.state === "recording";
-          if (stillRecording) {
-            setMode("listening");
-          }
-        }
-      } else {
-        const stillRecording = mediaRecorderRef.current?.state === "recording";
-        if (stillRecording) {
-          setMode("listening");
-        }
+      if (!textToSpeak.trim()) {
+        textToSpeak = lastBotMessage.text || "";
+      }
+
+      if (textToSpeak.trim()) {
+        await textToSpeech(textToSpeak);
       }
     }, [messages, textToSpeech]);
 
-    // Auto-TTS for new admin messages
     useEffect(() => {
-      if (messages.length === 0) return;
-
-      const lastMessage = messages[messages.length - 1];
-
-      // Check if it's an admin message and we haven't read it yet
-      // AND ensure voice session is actively running (prevent auto-read when panel is just open but idle)
-      if (
-        isVoiceActiveRef.current &&
-        lastMessage.isAdmin &&
-        lastMessage.id !== lastReadMessageIdRef.current
-      ) {
-        lastReadMessageIdRef.current = lastMessage.id;
-
-        // Construct text to speak (Information + Question/Text)
-        let textToSpeak = [
-          lastMessage.information,
-          lastMessage.question || lastMessage.text
-        ]
-          .filter(Boolean)
-          .join(". ");
-
-        if (textToSpeak.trim()) {
-          console.log("[Auto-TTS] Reading new admin message:", textToSpeak);
-          setMode("responding");
-
-          // We need to ensure we don't interrupt the user if they are speaking, 
-          // but usually the server response comes after user finishes.
-          // Safest to just play it.
-          textToSpeech(textToSpeak).catch(err => {
-            console.error("[Auto-TTS] Error:", err);
-            setMode("idle");
-          });
-        }
+      if (!hasInitializedRef.current) {
+        hasInitializedRef.current = true;
+        setMode("idle");
       }
-    }, [messages, textToSpeech]);
+    }, []);
+    useEffect(() => {
+      const lastBotMessage = findLatestBotMessage(messages);
 
-    // Cleanup only on component unmount (not on every isRecording change)
+      if (!lastBotMessage) return;
+
+      // Only read if it's a new message (different from last read)
+      if (lastBotMessage.id === lastReadMessageIdRef.current) return;
+
+      // For the very first message, add a delay
+      if (!hasReadFirstMessageRef.current) {
+        setTimeout(() => {
+          void readLastRelevantMessage();
+        }, 500);
+      } else {
+        void readLastRelevantMessage();
+      }
+    }, [messages, readLastRelevantMessage]);
+
     useEffect(() => {
       return () => {
         if (mediaRecorderRef.current) {
@@ -556,9 +695,12 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
           audioRef.current.src = "";
         }
       };
-    }, []); // Empty dependency array = run cleanup only on unmount
+    }, []);
 
-    // Expose methods via ref
+    const toggleMute = () => {
+      setIsAgentMuted((prev) => !prev);
+    };
+
     useImperativeHandle(
       ref,
       () => ({
@@ -566,48 +708,73 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         stopRecording,
         isRecording,
         mode,
+        toggleMute,
+        isAgentMuted,
       }),
-      [isRecording, mode, startRecording, stopRecording]
+      [isRecording, mode, startRecording, stopRecording, isAgentMuted]
     );
 
     const buttonLabel = !isSupported
       ? "Microphone not supported"
-      : mode === "idle"
-        ? "Press to start voice chat"
-        : mode === "listening"
-          ? "Listening…"
-          : mode === "processing"
-            ? "Processing…"
-            : "Assistant is speaking…";
+      : mode === "listening"
+        ? "Listening…"
+        : mode === "processing"
+          ? "Processing…"
+          : mode === "responding"
+            ? "Assistant is speaking…"
+            : !isMicActive
+              ? "Press Mic to Speak"
+              : "Ready";
 
-    const showBars = mode === "listening";
+    const showBars = mode === "listening" || mode === "responding";
 
     return (
-      <div className={`fcw-voice-panel ${mode === "idle" ? "fcw-voice-panel-idle" : ""}`}>
+      <div
+        className={`fcw-voice-panel ${mode === "idle" ? "fcw-voice-panel-idle" : ""
+          }`}
+      >
         <header className="fcw-voice-header">
-          <Sparkles size={18} />
-          <div>
-            <p>Voice Companion</p>
-            <span>{status}</span>
+          <div className="fcw-voice-header-left">
+            <Sparkles size={18} />
+            <div>
+              <p>Voice Companion</p>
+              <span>{status}</span>
+            </div>
           </div>
+          <button
+            className="fcw-voice-mute-btn"
+            onClick={toggleMute}
+            title={isAgentMuted ? "Unmute Agent" : "Mute Agent"}
+          >
+            {isAgentMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
         </header>
 
         <div className="fcw-voice-center">
+          {/* The Mic is now just an indicator since it's always on, but we keep the visual */}
           <div
             className={`fcw-voice-mic ${mode}`}
-            style={{ cursor: "default", pointerEvents: "none" }}
+            style={{
+              cursor: "default",
+              pointerEvents: "none",
+              opacity: isAgentMuted ? 0.5 : 1,
+            }}
             aria-live="polite"
           >
             <Mic size={38} />
             {showBars && (
-              <span className="fcw-voice-bars" aria-hidden="true">
+              <span
+                className={`fcw-voice-bars ${mode === "responding" ? "responding" : ""
+                  }`}
+                aria-hidden="true"
+              >
                 {levels.map((lvl, idx) => (
                   <i key={idx} style={{ height: `${14 + lvl * 26}px` }} />
                 ))}
               </span>
             )}
           </div>
-          <p>{buttonLabel}.</p>
+          <p>{isAgentMuted ? "Agent is muted" : buttonLabel}</p>
         </div>
       </div>
     );

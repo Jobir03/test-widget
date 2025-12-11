@@ -314,22 +314,19 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [open, hasMore, fetchingMore, fetching, loadMoreMessages]);
 
-  // Track voice recording state
+  // Track voice recording state (Removed Polling in favor of callback)
+  /*
   useEffect(() => {
     const checkRecordingState = () => {
       if (voiceTalkPanelRef.current) {
         setIsVoiceRecording(voiceTalkPanelRef.current.isRecording);
       }
     };
-
-    // Check immediately
     checkRecordingState();
-
-    // Check periodically to update state (every 200ms for smooth updates)
     const interval = setInterval(checkRecordingState, 200);
-
     return () => clearInterval(interval);
   }, []);
+  */
 
   return (
     <div ref={widgetRef} className="fcw-root">
@@ -372,6 +369,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               widgetKey={widgetKey}
               sendMessage={sendMessage}
               messages={messages}
+              onStateChange={setIsVoiceRecording}
             />
             <div className="fcw-widget-shell">
               <div className={`fcw fcw-container  ${sizeClass} `}>
@@ -447,6 +445,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     showCallMeForm={showCallMeForm}
                     onCloseCallMe={() => setShowCallMeForm(false)}
                     widgetKey={widgetKey}
+                    onCloseChat={() => setOpen(false)}
                   />
                   {isTyping && (
                     <div className="fcw fcw-typing-row">
