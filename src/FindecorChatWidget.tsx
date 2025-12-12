@@ -53,6 +53,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     loadMoreMessages,
     hasMore,
     fetchingMore,
+    loadingStates,
   } = useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
@@ -71,6 +72,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const [companyAvatar, setCompanyAvatar] = useState<string | null>(
     "https://cdn-icons-png.flaticon.com/512/6858/6858504.png"
   );
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   useEffect(() => {
     authService.setBaseUrl(apiBase);
@@ -441,23 +443,26 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     sendMessage={sendMessage}
                     sendHomeGeneration={sendHomeGeneration}
                     showScheduleForm={showScheduleForm}
-                    onCloseSchedule={() => setShowScheduleForm(false)}
+                    onCloseSchedule={() => {
+                      setShowScheduleForm(false);
+                    }}
                     showCallMeForm={showCallMeForm}
-                    onCloseCallMe={() => setShowCallMeForm(false)}
+                    onCloseCallMe={() => {
+                      setShowCallMeForm(false);
+                    }}
                     widgetKey={widgetKey}
-                    onCloseChat={() => setOpen(false)}
+                    isTyping={isTyping}
+                    isGeneratingImage={isGeneratingImage}
+                    onGeneratingImageChange={setIsGeneratingImage}
+                    loadingStates={loadingStates}
+                    onScrollToBottom={() => {
+                      if (messagesContainerRef.current) {
+                        messagesContainerRef.current.scrollTop =
+                          messagesContainerRef.current.scrollHeight;
+                      }
+                    }}
                   />
-                  {isTyping && (
-                    <div className="fcw fcw-typing-row">
-                      <div className="fcw fcw-bubble bot fcw-typing-bubble">
-                        <span className="fcw fcw-typing">
-                          <span className="fcw-typing-dot" />
-                          <span className="fcw-typing-dot" />
-                          <span className="fcw-typing-dot" />
-                        </span>
-                      </div>
-                    </div>
-                  )}
+
                   {error && isOnline && (
                     <div className="fcw fcw-message">
                       <div
