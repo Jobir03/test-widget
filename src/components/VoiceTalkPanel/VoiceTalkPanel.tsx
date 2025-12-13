@@ -723,7 +723,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
           : mode === "responding"
             ? "Assistant is speaking…"
             : !isMicActive
-              ? "Press Mic to Speak"
+              ? "Voice assistant"
               : "Ready";
 
     const showBars = mode === "listening" || mode === "responding";

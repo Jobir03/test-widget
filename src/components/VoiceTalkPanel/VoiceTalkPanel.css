@@ -184,12 +184,10 @@
   position: absolute;
   inset: -30px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(59, 130, 246, 0.4),
-    rgba(37, 99, 235, 0.2) 50%,
-    transparent 70%
-  );
+  background: radial-gradient(circle,
+      rgba(59, 130, 246, 0.4),
+      rgba(37, 99, 235, 0.2) 50%,
+      transparent 70%);
   animation: fcw-voice-circle-glow 2.5s ease-in-out infinite;
   pointer-events: none;
   filter: blur(20px);
@@ -232,11 +230,9 @@
   position: absolute;
   inset: -15px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(99, 102, 241, 0.15),
-    transparent 65%
-  );
+  background: radial-gradient(circle,
+      rgba(99, 102, 241, 0.15),
+      transparent 65%);
   animation: fcw-voice-gentle-pulse 3s ease-in-out infinite;
   pointer-events: none;
 }
@@ -271,6 +267,7 @@
     transform: scale(0.9);
     opacity: 1;
   }
+
   100% {
     transform: scale(1.2);
     opacity: 0;
@@ -278,11 +275,13 @@
 }
 
 @keyframes fcw-voice-circle-pulse {
+
   0%,
   100% {
     transform: scale(1);
     opacity: 0.6;
   }
+
   50% {
     transform: scale(1.15);
     opacity: 0.3;
@@ -290,11 +289,13 @@
 }
 
 @keyframes fcw-voice-circle-glow {
+
   0%,
   100% {
     transform: scale(1);
     opacity: 0.8;
   }
+
   50% {
     transform: scale(1.2);
     opacity: 0.4;
@@ -306,9 +307,11 @@
     transform: rotate(0deg) scale(1);
     opacity: 0.6;
   }
+
   50% {
     opacity: 0.3;
   }
+
   100% {
     transform: rotate(360deg) scale(1);
     opacity: 0.6;
@@ -316,11 +319,13 @@
 }
 
 @keyframes fcw-voice-gentle-pulse {
+
   0%,
   100% {
     transform: scale(1);
     opacity: 0.3;
   }
+
   50% {
     transform: scale(1.1);
     opacity: 0.15;

@@ -93,23 +93,44 @@ export function ProductRecommendations({
     if (!url) return;
 
     const iframe = document.getElementById("productFrame") as HTMLIFrameElement;
-    if (iframe) {
+    if (true) {
       setIsLoadingDetails(true);
+
+      let fallbackTimeout: ReturnType<typeof setTimeout> | null = null;
 
       const handleLoad = () => {
         setIsLoadingDetails(false);
+        if (fallbackTimeout) {
+          clearTimeout(fallbackTimeout);
+        }
         iframe.removeEventListener("load", handleLoad);
+        iframe.removeEventListener("error", handleError);
+        // Close the chat widget when iframe page loads
+        onClose?.();
+      };
+
+      const handleError = () => {
+        setIsLoadingDetails(false);
+        if (fallbackTimeout) {
+          clearTimeout(fallbackTimeout);
+        }
+        iframe.removeEventListener("load", handleLoad);
+        iframe.removeEventListener("error", handleError);
+        // Close chat even if there's an error
+        onClose?.();
       };
 
       iframe.addEventListener("load", handleLoad);
+      iframe.addEventListener("error", handleError);
       iframe.src = url;
-      // Close the chat widget
-      setTimeout(() => {
+
+      // Fallback: close after 3 seconds if load event doesn't fire (for safety)
+      fallbackTimeout = setTimeout(() => {
         setIsLoadingDetails(false);
         iframe.removeEventListener("load", handleLoad);
+        iframe.removeEventListener("error", handleError);
         onClose?.();
-      }, 10000);
-
+      }, 3000);
     }
   };
 
