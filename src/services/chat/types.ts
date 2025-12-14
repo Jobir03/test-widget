@@ -22,6 +22,9 @@ export interface ServerMessage {
   options: string[];
   schedule?: SchedulePayload | null;
   callRequest?: CallRequestPayload | null;
+  product_photo_link?: string | null; // Product photo link for image_generation type
+  generated_photo?: string | null; // Generated photo link for image_generation type
+  room_image_link?: string | null; // Room image link for image_generation type
 }
 
 export interface PaginatedResponse<T> {
@@ -138,4 +141,7 @@ export interface ChatMessage {
   description?: string | null; // Legacy support
   showScheduleForm?: boolean; // Flag to show schedule form
   showCallMeForm?: boolean; // Flag to show call me form
+  product_photo_link?: string | null; // Product photo link for image_generation type
+  generated_photo?: string | null; // Generated photo link for image_generation type
+  room_image_link?: string | null; // Room image link for image_generation type
 }

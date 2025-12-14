@@ -116,8 +116,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Information (description) */}
                     {msg.information && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          }`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <div className="fcw fcw-message-text">
                           {msg.information}
@@ -133,8 +134,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Products */}
                     {msg.products && msg.products.length > 0 && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          }`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <ProductRecommendations
                           products={msg.products}
@@ -159,8 +161,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Question */}
                     {msg.question && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          }`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <div className="fcw fcw-message-text">
                           {msg.question}
@@ -182,8 +185,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Information (if available) */}
                     {msg.information && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          }`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <div className="fcw fcw-message-text">
                           {msg.information}
@@ -199,15 +203,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Question */}
                     {msg.question && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          } ${msg.isError ? "fcw-error-message" : ""}`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        } ${msg.isError ? "fcw-error-message" : ""}`}
                         style={
                           msg.isError
                             ? {
-                              backgroundColor: "#fee2e2",
-                              color: "#991b1b",
-                              border: "1px solid #fca5a5",
-                            }
+                                backgroundColor: "#fee2e2",
+                                color: "#991b1b",
+                                border: "1px solid #fca5a5",
+                              }
                             : undefined
                         }
                       >
@@ -231,8 +236,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Information (if available) */}
                     {msg.information && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          }`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <div className="fcw fcw-message-text">
                           {msg.information}
@@ -245,15 +251,23 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         </span>
                       </div>
                     )}
-                    {/* Images */}
-                    {msg.images && msg.images.length > 0 && (
+                    {/* Product Photo Link */}
+                    {msg?.generated_photo && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          }`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
-                        <ImageMessage
-                          images={msg.images}
-                          onScrollToBottom={onScrollToBottom}
+                        <img
+                          src={msg?.generated_photo}
+                          alt="Product"
+                          style={{
+                            width: "100%",
+                            maxWidth: "400px",
+                            height: "auto",
+                            borderRadius: "8px",
+                            marginBottom: "4px",
+                          }}
                         />
                         <span className="fcw fcw-time">
                           {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -263,11 +277,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         </span>
                       </div>
                     )}
-                    {/* Question (if available) */}
+
                     {msg.question && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                          }`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <div className="fcw fcw-message-text">
                           {msg.question}
@@ -311,12 +326,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         : null;
                       const bookedTimeFormatted = bookedTime
                         ? bookedTime.toLocaleString([], {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                         : undefined;
 
                       return (
@@ -388,36 +403,37 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                               {/* Customer name - check customerName first, then widgetUser */}
                               {(scheduleResponse?.customerName ||
                                 scheduleResponse?.widgetUser?.firstName) && (
-                                  <div
-                                    style={{
-                                      color: "#6b7280",
-                                      marginTop: 2,
-                                    }}
-                                  >
-                                    <span style={{ opacity: 0.9 }}>
-                                      Customer:
-                                    </span>{" "}
-                                    {scheduleResponse?.customerName ||
-                                      scheduleResponse.widgetUser?.firstName}
-                                    {(scheduleResponse?.contactInfo ||
-                                      scheduleResponse?.widgetUser?.contact) && (
-                                        <span>
-                                          {" "}
-                                          (
-                                          {scheduleResponse?.contactInfo ||
-                                            scheduleResponse.widgetUser?.contact}
-                                          )
-                                        </span>
-                                      )}
-                                  </div>
-                                )}
+                                <div
+                                  style={{
+                                    color: "#6b7280",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  <span style={{ opacity: 0.9 }}>
+                                    Customer:
+                                  </span>{" "}
+                                  {scheduleResponse?.customerName ||
+                                    scheduleResponse.widgetUser?.firstName}
+                                  {(scheduleResponse?.contactInfo ||
+                                    scheduleResponse?.widgetUser?.contact) && (
+                                    <span>
+                                      {" "}
+                                      (
+                                      {scheduleResponse?.contactInfo ||
+                                        scheduleResponse.widgetUser?.contact}
+                                      )
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                           {/* Information (if available) */}
                           {msg.information && (
                             <div
-                              className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                                }`}
+                              className={`fcw fcw-bubble ${
+                                msg.from === "user" ? "user" : "bot"
+                              }`}
                             >
                               <div className="fcw fcw-message-text">
                                 {msg.information}
@@ -436,8 +452,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                           {/* Question (if available) */}
                           {msg.question && (
                             <div
-                              className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                                }`}
+                              className={`fcw fcw-bubble ${
+                                msg.from === "user" ? "user" : "bot"
+                              }`}
                             >
                               <div
                                 className="fcw fcw-message-text"
@@ -465,8 +482,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {/* Legacy support: description (for backward compatibility) */}
                 {!msg.type && msg.description && (
                   <div
-                    className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                      }`}
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    }`}
                   >
                     <div className="fcw fcw-message-text">
                       {msg.description}
@@ -483,8 +501,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {/* Legacy support: products without type */}
                 {!msg.type && msg.products && msg.products.length > 0 && (
                   <div
-                    className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                      }`}
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    }`}
                   >
                     <ProductRecommendations
                       products={msg.products}
@@ -510,8 +529,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {/* Legacy support: images without type */}
                 {!msg.type && msg.images && msg.images.length > 0 && (
                   <div
-                    className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                      }`}
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    }`}
                   >
                     <ImageMessage
                       images={msg.images}
@@ -529,15 +549,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {/* Legacy support: text (for user messages and backward compatibility) */}
                 {!msg.type && msg.text && (
                   <div
-                    className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
-                      } ${msg.isError ? "fcw-error-message" : ""}`}
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    } ${msg.isError ? "fcw-error-message" : ""}`}
                     style={
                       msg.isError
                         ? {
-                          backgroundColor: "#fee2e2",
-                          color: "#991b1b",
-                          border: "1px solid #fca5a5",
-                        }
+                            backgroundColor: "#fee2e2",
+                            color: "#991b1b",
+                            border: "1px solid #fca5a5",
+                          }
                         : undefined
                     }
                   >
@@ -579,12 +600,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         : null;
                       const bookedTimeFormatted = bookedTime
                         ? bookedTime.toLocaleString([], {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                         : undefined;
 
                       return (
@@ -651,27 +672,27 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                             {/* Customer name - check customerName first, then widgetUser */}
                             {(scheduleResponse?.customerName ||
                               scheduleResponse?.widgetUser?.firstName) && (
-                                <div
-                                  style={{
-                                    color: "#6b7280",
-                                    marginTop: 2,
-                                  }}
-                                >
-                                  <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
-                                  {scheduleResponse?.customerName ||
-                                    scheduleResponse.widgetUser?.firstName}
-                                  {(scheduleResponse?.contactInfo ||
-                                    scheduleResponse?.widgetUser?.contact) && (
-                                      <span>
-                                        {" "}
-                                        (
-                                        {scheduleResponse?.contactInfo ||
-                                          scheduleResponse.widgetUser?.contact}
-                                        )
-                                      </span>
-                                    )}
-                                </div>
-                              )}
+                              <div
+                                style={{
+                                  color: "#6b7280",
+                                  marginTop: 2,
+                                }}
+                              >
+                                <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
+                                {scheduleResponse?.customerName ||
+                                  scheduleResponse.widgetUser?.firstName}
+                                {(scheduleResponse?.contactInfo ||
+                                  scheduleResponse?.widgetUser?.contact) && (
+                                  <span>
+                                    {" "}
+                                    (
+                                    {scheduleResponse?.contactInfo ||
+                                      scheduleResponse.widgetUser?.contact}
+                                    )
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -846,12 +867,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
       {(loadingStates.schedule ||
         loadingStates.callRequest ||
         loadingStates.ai) && (
-          <div className="fcw fcw-typing-row">
-            <div className="fcw fcw-bubble bot">
-              <TypingAnimation mode="dots" />
-            </div>
+        <div className="fcw fcw-typing-row">
+          <div className="fcw fcw-bubble bot">
+            <TypingAnimation mode="dots" />
           </div>
-        )}
+        </div>
+      )}
       {/* Legacy support for isGeneratingImage */}
       {isGeneratingImage && !loadingStates.roomGeneration && (
         <div className="fcw fcw-typing-row">

@@ -63,6 +63,9 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     options: m.options ?? [],
     schedule: m.schedule ?? null,
     callRequest: m.callRequest ?? null,
+    product_photo_link: m.product_photo_link ?? null,
+    generated_photo: m.generated_photo ?? null,
+    room_image_link: m.room_image_link ?? null,
   });
 
   /** Fetch message history (paginated) */
