@@ -64,6 +64,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const apiRef = useRef<ApiClient | null>(null);
   const voiceTalkPanelRef = useRef<VoiceTalkPanelRef | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
@@ -259,8 +260,20 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      selectedFile
+        ? handleSend()
+        : setInput(""); // Clear input if sending fails/blocked but usually handleSend handles it
+
+      // Keep focus on input after sending (or trying to)
+      setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 0);
+
     } catch (error) {
       console.error("Error sending message:", error);
+      setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 0);
     }
   };
 
@@ -587,6 +600,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                         if (!isOnline || loading || isUploading) return;
                         sendMessage(label, "");
                       }}
+                      disabled={!isOnline || loading || isUploading}
                     >
                       {label}
                     </button>
@@ -608,6 +622,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     }, 100);
                   }
                 }}
+                disabled={!isOnline || loading || isUploading}
               >
                 <Calendar size={16} />
                 Schedule Visit
@@ -647,7 +662,10 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
                   placeholder={inputPlaceholder}
-                  disabled={loading || isUploading || !isOnline}
+                  disabled={!isOnline}
+                  readOnly={loading || isUploading}
+                  ref={textInputRef}
+                  autoFocus
                 />
                 <button
                   onClick={
