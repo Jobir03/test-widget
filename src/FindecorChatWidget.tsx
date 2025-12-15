@@ -189,7 +189,9 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     }
   };
 
-  const [pendingMicAction, setPendingMicAction] = useState<"start" | "stop" | null>(null);
+  const [pendingMicAction, setPendingMicAction] = useState<
+    "start" | "stop" | null
+  >(null);
 
   const handleMicIconClick = async (e: React.MouseEvent) => {
     // Stop event propagation so card click doesn't trigger
@@ -260,24 +262,12 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-<<<<<<< HEAD
       // Keep focus on input after sending
       setTimeout(() => {
         if (textInputRef.current) {
           textInputRef.current.focus();
         }
       }, 0);
-=======
-      selectedFile
-        ? handleSend()
-        : setInput(""); // Clear input if sending fails/blocked but usually handleSend handles it
-
-      // Keep focus on input after sending (or trying to)
-      setTimeout(() => {
-        textInputRef.current?.focus();
-      }, 0);
-
->>>>>>> 9ca06e56dfe5d9e692e99fa9e769d8170b7e560e
     } catch (error) {
       console.error("Error sending message:", error);
       setTimeout(() => {
@@ -428,7 +418,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             <div
               className="fcw-launcher-icon"
               onClick={showMicIcon ? handleMicIconClick : undefined}
-              style={showMicIcon ? { cursor: 'pointer' } : {}}
+              style={showMicIcon ? { cursor: "pointer" } : {}}
             >
               {showMicIcon ? (
                 isVoiceRecording ? (
@@ -457,7 +447,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
           position: "fixed", // Ensure it's fixed (should already be via CSS class, but forcing it for the hidden state to be safe)
           zIndex: open ? 10000 : -1, // Drop behind everything when closed
           // If it's closed, move it off-screen to be double sure it doesn't block interactions
-          ...(open ? {} : { transform: 'scale(0.9)' })
+          ...(open ? {} : { transform: "scale(0.9)" }),
         }}
       >
         <VoiceTalkPanel
@@ -641,10 +631,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
               {selectedFile && (
                 <div className="fcw sellect-file">
                   <span>{selectedFile.name}</span>
-                  <button
-                    onClick={removeFile}
-                    className="fcw-remove-file-btn"
-                  >
+                  <button onClick={removeFile} className="fcw-remove-file-btn">
                     <X size={16} />
                   </button>
                 </div>
@@ -660,8 +647,9 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 />
                 <label
                   htmlFor="file-upload"
-                  className={`fcw-file-upload-label${!isOnline || loading || isUploading ? " disabled" : ""
-                    }`}
+                  className={`fcw-file-upload-label${
+                    !isOnline || loading || isUploading ? " disabled" : ""
+                  }`}
                 >
                   <Paperclip size={20} />
                 </label>
