@@ -626,10 +626,15 @@
   cursor: pointer;
 }
 
-.fcw-quick-replies .schedule-visit:hover {
+.fcw-quick-replies .schedule-visit:hover:not(:disabled) {
   background: #f3f4f6;
   border-color: #d1d5db;
   transform: translateY(-1px);
+}
+
+.fcw-quick-replies .schedule-visit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .fcw-chips-container {
@@ -661,13 +666,18 @@
   gap: 5px;
 }
 
-.fcw-chip:hover {
+.fcw-chip:hover:not(:disabled) {
   background: #f3f4f6;
   border-color: #d1d5db;
 }
 
-.fcw-chip:active {
+.fcw-chip:active:not(:disabled) {
   transform: translateY(0);
+}
+
+.fcw-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Input Area */

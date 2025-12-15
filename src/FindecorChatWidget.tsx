@@ -64,6 +64,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const apiRef = useRef<ApiClient | null>(null);
   const voiceTalkPanelRef = useRef<VoiceTalkPanelRef | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
@@ -259,6 +260,12 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      // Keep focus on input after sending
+      setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus();
+        }
+      }, 0);
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -587,6 +594,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                         if (!isOnline || loading || isUploading) return;
                         sendMessage(label, "");
                       }}
+                      disabled={!isOnline || loading || isUploading}
                     >
                       {label}
                     </button>
@@ -608,6 +616,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                     }, 100);
                   }
                 }}
+                disabled={!isOnline || loading || isUploading}
               >
                 <Calendar size={16} />
                 Schedule Visit
@@ -642,12 +651,12 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                   <Paperclip size={20} />
                 </label>
                 <input
+                  ref={textInputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
                   placeholder={inputPlaceholder}
-                  disabled={loading || isUploading || !isOnline}
                 />
                 <button
                   onClick={
@@ -655,14 +664,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                       ? handleSend
                       : handleVoiceToggle
                   }
-                  disabled={
-                    !isOnline ||
-                    (input.trim() || selectedFile
-                      ? (loading || isUploading) &&
-                      !input.trim() &&
-                      !selectedFile
-                      : false)
-                  }
+                  disabled={!isOnline || loading || isUploading}
                   className={
                     !input.trim() && !selectedFile && isVoiceRecording
                       ? "fcw-voice-active"
