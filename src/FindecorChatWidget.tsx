@@ -260,14 +260,29 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+<<<<<<< HEAD
       // Keep focus on input after sending
       setTimeout(() => {
         if (textInputRef.current) {
           textInputRef.current.focus();
         }
       }, 0);
+=======
+      selectedFile
+        ? handleSend()
+        : setInput(""); // Clear input if sending fails/blocked but usually handleSend handles it
+
+      // Keep focus on input after sending (or trying to)
+      setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 0);
+
+>>>>>>> 9ca06e56dfe5d9e692e99fa9e769d8170b7e560e
     } catch (error) {
       console.error("Error sending message:", error);
+      setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 0);
     }
   };
 
@@ -657,6 +672,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
                   placeholder={inputPlaceholder}
+                  autoFocus
                 />
                 <button
                   onClick={
