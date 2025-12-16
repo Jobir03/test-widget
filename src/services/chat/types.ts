@@ -111,7 +111,12 @@ export interface CallRequestPayload {
   name: string;
 }
 
-export type LoadingType = "schedule" | "callRequest" | "image" | "ai" | "roomGeneration";
+export type LoadingType =
+  | "schedule"
+  | "callRequest"
+  | "image"
+  | "ai"
+  | "roomGeneration";
 
 export interface LoadingEvent {
   type: LoadingType;
@@ -144,4 +149,6 @@ export interface ChatMessage {
   product_photo_link?: string | null; // Product photo link for image_generation type
   generated_photo?: string | null; // Generated photo link for image_generation type
   room_image_link?: string | null; // Room image link for image_generation type
+  isPending?: boolean; // Optimistic UI state
+  waitingForTTS?: boolean; // Message is waiting for TTS to complete before being displayed
 }

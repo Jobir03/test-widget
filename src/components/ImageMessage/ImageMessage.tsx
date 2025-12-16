@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import "./ImageMessage.css";
 
@@ -26,6 +26,22 @@ const ImageMessage: React.FC<ImageMessageProps> = ({
       handleCloseModal();
     }
   };
+
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedImage) {
+        handleCloseModal();
+      }
+    };
+
+    if (selectedImage) {
+      window.addEventListener("keydown", handleEscKey);
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleEscKey);
+    };
+  }, [selectedImage]);
 
   return (
     <>
@@ -98,4 +114,3 @@ const ImageMessage: React.FC<ImageMessageProps> = ({
 };
 
 export default ImageMessage;
-

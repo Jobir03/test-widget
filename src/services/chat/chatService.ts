@@ -264,6 +264,31 @@ export const createChatService = (widgetKey: string) => {
         }
       });
     });
+    socket.on(
+      "aiProcess",
+      (data: {
+        type?: string;
+        process_type?: string;
+        information?: string;
+        timestamp?: string;
+      }) => {
+        // Handle aiProcess event - display information as bot message
+        if (data?.information) {
+          const aiProcessMessage: ChatMessage = {
+            id: `aiProcess-${Date.now()}`,
+            from: "bot",
+            text: data.information,
+            images: [],
+            products: [],
+            timestamp: data.timestamp
+              ? new Date(data.timestamp)
+              : new Date(),
+            isAdmin: true,
+          };
+          onMessage?.(aiProcessMessage);
+        }
+      }
+    );
   };
 
   const cleanListeners = () => {
@@ -275,6 +300,7 @@ export const createChatService = (widgetKey: string) => {
     socket.off("errorMessage");
     socket.off("newSchedule");
     socket.off("loading");
+    socket.off("aiProcess");
   };
 
   const connectWithRetry = async (): Promise<void> => {

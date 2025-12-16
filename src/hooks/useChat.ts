@@ -226,6 +226,36 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     }
   }, [apiBase, widgetKey, currentPage, hasMore, fetchingMore, fetching]);
 
+  /** Upload file helper */
+  const uploadFile = useCallback(
+    async (file: File): Promise<string> => {
+      if (!apiRef.current) {
+        apiRef.current = createApiClient(apiBase, widgetKey);
+      }
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const client = apiRef.current as any;
+        const response = await client.post(
+          "/upload/widget-user",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        const url = response.url || response.data?.url;
+        return `https://storage.googleapis.com${url}`;
+      } catch (error) {
+        console.error("File upload failed:", error);
+        throw error;
+      }
+    },
+    [apiBase, widgetKey]
+  );
+
   /** Handle loading events from socket */
   const onLoadingEvent = useCallback((event: LoadingEvent) => {
     if (!event || !event.type) return;
@@ -233,6 +263,45 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       ...prev,
       [event.type]: event.loading,
     }));
+  }, []);
+
+  // Keep typing animation active if there are messages waiting for TTS
+  useEffect(() => {
+    const hasWaitingMessages = messages.some((msg) => msg.waitingForTTS === true);
+    if (hasWaitingMessages) {
+      // Keep ai loading state true to show typing animation
+      setLoadingStates((prev) => ({
+        ...prev,
+        ai: true,
+      }));
+      setIsTyping(true);
+    }
+  }, [messages]);
+
+  /** Reveal message after TTS completes */
+  const revealMessageAfterTTS = useCallback((messageId: string) => {
+    setMessages((prev) => {
+      const updated = prev.map((msg) =>
+        msg.id === messageId ? { ...msg, waitingForTTS: false } : msg
+      );
+
+      // Check if there are any other messages still waiting for TTS
+      const hasOtherWaitingMessages = updated.some(
+        (msg) => msg.waitingForTTS === true
+      );
+
+      // Only stop loading/typing if no other messages are waiting
+      if (!hasOtherWaitingMessages) {
+        setLoading(false);
+        setIsTyping(false);
+        setLoadingStates((prevState) => ({
+          ...prevState,
+          ai: false,
+        }));
+      }
+
+      return updated;
+    });
   }, []);
 
   /** Handle new incoming message */
@@ -257,12 +326,80 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       setAvailableProducts(msg.products);
     }
 
-    setMessages((prev) => [...prev, msg]);
-    setLoading(false);
-    // Stop typing animation for bot messages (including error messages) or scheduled messages
-    if (msg.from === "bot" || msg.isAdmin || (!msg.isAdmin && msg.schedule)) {
-      setIsTyping(false);
+    // Check if we have a pending message that matches this new message
+    // We match by text content (or question) and being from user
+    const msgContent = msg.text || msg.question;
+
+    if (msg.from === "user") {
+      setMessages((prev) => {
+        const pendingIndex = prev.findIndex(
+          (m) =>
+            m.isPending &&
+            m.from === "user" &&
+            (
+              // Case A: Text matches (and both might have images or not, primary key is text)
+              (msgContent && (m.text === msgContent || m.question === msgContent)) ||
+              // Case B: Both have NO text, but both HAVE images (assuming serial upload of images)
+              (!msgContent && !m.text && !m.question && m.images.length > 0 && msg.images.length > 0)
+            )
+        );
+
+        if (pendingIndex !== -1) {
+          // Replace pending message with real message
+          const newMessages = [...prev];
+
+          // CRITICAL: Ensure the message doesn't jump up the list if server time is behind
+          // If the pending message has a later timestamp (which we forced to be at bottom),
+          // keep that timestamp for the confirmed message.
+          const pendingMsg = prev[pendingIndex];
+          const pendingTime = new Date(pendingMsg.timestamp).getTime();
+          const serverTime = new Date(msg.timestamp).getTime();
+
+          if (serverTime < pendingTime) {
+            msg.timestamp = pendingMsg.timestamp;
+          }
+
+          newMessages[pendingIndex] = msg;
+          return newMessages;
+        }
+
+        // If no pending message found, just append
+        // Check for duplicates just in case (by ID)
+        if (prev.some((m) => m.id === msg.id)) {
+          return prev;
+        }
+        return [...prev, msg];
+      });
+    } else {
+      // For bot messages, mark as waitingForTTS if it has text to speak
+      const hasTextToSpeak = Boolean(
+        msg.information || msg.question || msg.text
+      );
+
+      setMessages((prev) => {
+        // Check for duplicates by ID
+        if (prev.some((m) => m.id === msg.id)) {
+          return prev;
+        }
+        // Mark bot messages as waitingForTTS if they have text content
+        return [
+          ...prev,
+          {
+            ...msg,
+            waitingForTTS: hasTextToSpeak && !msg.isError,
+          },
+        ];
+      });
+
+      // Always stop loading and uploading state when message arrives
+      // The typing animation will be re-enabled by the useEffect if waitingForTTS is true
+      setLoading(false);
       setIsUploading(false);
+
+      // If NOT waiting for TTS, also stop typing immediately
+      if (!hasTextToSpeak || msg.isError) {
+        setIsTyping(false);
+      }
     }
   }, []);
 
@@ -341,31 +478,89 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     text: string,
     imageUrl: string = "",
     schedule?: SchedulePayload | null,
-    callRequest?: CallRequestPayload | null
+    callRequest?: CallRequestPayload | null,
+    file?: File | null
   ) => {
-    if (!chatService.current || (!text.trim() && !imageUrl && !schedule && !callRequest))
+    if (!chatService.current || (!text.trim() && !imageUrl && !schedule && !callRequest && !file))
       return;
+
+    // Optimistic UI update
+    let tempId = "";
+    let optimisticImageUrl = imageUrl;
+
+    if (file) {
+      optimisticImageUrl = URL.createObjectURL(file);
+    }
+
+    if ((text || optimisticImageUrl) && !schedule && !callRequest) {
+      tempId = `temp-${Date.now()}`;
+
+      // Ensure the pending message appears at the bottom even if server time is ahead of client time
+      const lastMessage = messages[messages.length - 1];
+      let messageTime = new Date();
+      if (lastMessage && new Date(lastMessage.timestamp).getTime() > messageTime.getTime()) {
+        messageTime = new Date(new Date(lastMessage.timestamp).getTime() + 1);
+      }
+
+      const pendingMessage: ChatMessage = {
+        id: tempId,
+        from: "user",
+        text: text,
+        images: optimisticImageUrl ? [optimisticImageUrl] : [],
+        products: [],
+        timestamp: messageTime,
+        isPending: true,
+      };
+      setMessages((prev) => [...prev, pendingMessage]);
+    }
+
     setLoading(true);
     setError(null);
     setIsTyping(true);
+    if (file) setIsUploading(true);
 
     try {
-      await chatService.current.sendMessage(text, imageUrl, schedule, callRequest);
+      let finalImageUrl = imageUrl;
+      if (file) {
+        finalImageUrl = await uploadFile(file);
+      }
+
+      await chatService.current.sendMessage(text, finalImageUrl, schedule, callRequest);
     } catch {
       setError("Failed to send message");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          from: "bot",
-          text: "Sorry, something went wrong. Please try again.",
-          images: [],
-          products: [],
-          timestamp: new Date(),
-        },
-      ]);
+      setMessages((prev) => {
+        // Remove the pending message if it exists
+        if (tempId) {
+          const filtered = prev.filter((m) => m.id !== tempId);
+          // Add error message
+          return [
+            ...filtered,
+            {
+              id: Date.now().toString(),
+              from: "bot",
+              text: "Sorry, something went wrong. Please try again.",
+              images: [],
+              products: [],
+              timestamp: new Date(),
+            },
+          ];
+        }
+
+        return [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            from: "bot",
+            text: "Sorry, something went wrong. Please try again.",
+            images: [],
+            products: [],
+            timestamp: new Date(),
+          },
+        ];
+      });
     } finally {
       setLoading(false);
+      setIsUploading(false);
     }
   };
 
@@ -406,5 +601,6 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     fetchingMore,
     availableProducts,
     loadingStates,
+    revealMessageAfterTTS,
   };
 }

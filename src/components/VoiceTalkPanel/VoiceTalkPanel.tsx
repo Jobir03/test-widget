@@ -27,6 +27,8 @@ interface VoiceTalkPanelProps {
   sendMessage: (text: string, imageUrl?: string) => Promise<void>;
   messages: ChatMessage[];
   onStateChange?: (isRecording: boolean) => void;
+  onTTSComplete?: (messageId: string) => void;
+  isChatOpen?: boolean;
 }
 
 export interface VoiceTalkPanelRef {
@@ -56,7 +58,7 @@ const findLatestBotMessage = (messages: ChatMessage[]) => {
 };
 
 const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
-  ({ apiBase, widgetKey, sendMessage, messages, onStateChange }, ref) => {
+  ({ apiBase, widgetKey, sendMessage, messages, onStateChange, onTTSComplete, isChatOpen = false }, ref) => {
     const [mode, setMode] = useState<VoiceMode>("initializing");
     const [levels, setLevels] = useState([0.25, 0.5, 0.35]);
     const [isSupported, setIsSupported] = useState(true);
@@ -263,7 +265,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       setLevels([0.25, 0.25, 0.25]);
     };
 
-    const textToSpeech = useCallback(async (text: string): Promise<void> => {
+    const textToSpeech = useCallback(async (text: string, messageId?: string): Promise<void> => {
       if (
         !voiceTalkServiceRef.current ||
         !text.trim() ||
@@ -280,6 +282,10 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
 
         if (isAgentMutedRef.current) {
           setMode(isRecordingRef.current ? "listening" : "idle");
+          // Still reveal message even if muted
+          if (messageId && onTTSComplete) {
+            onTTSComplete(messageId);
+          }
           return;
         }
 
@@ -332,6 +338,12 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
             console.error("Error setting up audio output analyzer:", error);
           }
 
+          // Notify that TTS is ready and message can be shown
+          // This happens when audio starts playing, not when it ends
+          if (messageId && onTTSComplete) {
+            onTTSComplete(messageId);
+          }
+
           await new Promise<void>((resolve, reject) => {
             audio.onended = () => {
               // Cleanup audio output analyzer
@@ -376,6 +388,10 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
                   setMode("idle");
                   stopLevelAnimation();
                 }
+                // Still reveal message even if autoplay fails
+                if (messageId && onTTSComplete) {
+                  onTTSComplete(messageId);
+                }
                 reject(error);
               });
             }
@@ -389,8 +405,12 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         } else {
           setMode("idle");
         }
+        // Even on error, reveal the message
+        if (messageId && onTTSComplete) {
+          onTTSComplete(messageId);
+        }
       }
-    }, []);
+    }, [onTTSComplete]);
 
     const processCurrentSegment = useCallback(async () => {
       if (audioChunksRef.current.length === 0) {
@@ -630,6 +650,10 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         if (isFirstMessage) {
           hasReadFirstMessageRef.current = true;
         }
+        // If muted, still reveal message
+        if (lastBotMessage.waitingForTTS && onTTSComplete) {
+          onTTSComplete(lastBotMessage.id);
+        }
         return;
       }
 
@@ -650,9 +674,14 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
       }
 
       if (textToSpeak.trim()) {
-        await textToSpeech(textToSpeak);
+        await textToSpeech(textToSpeak, lastBotMessage.id);
+      } else {
+        // If no text to speak, reveal message immediately
+        if (lastBotMessage.waitingForTTS && onTTSComplete) {
+          onTTSComplete(lastBotMessage.id);
+        }
       }
-    }, [messages, textToSpeech]);
+    }, [messages, textToSpeech, onTTSComplete]);
 
     useEffect(() => {
       if (!hasInitializedRef.current) {
@@ -660,23 +689,47 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
         setMode("idle");
       }
     }, []);
+    // Track previous chat open state to detect when chat opens
+    const prevChatOpenRef = useRef(isChatOpen);
+    const chatJustOpenedRef = useRef(false);
+    
+    // Track when chat opens
     useEffect(() => {
-      const lastBotMessage = findLatestBotMessage(messages);
+      const wasClosed = !prevChatOpenRef.current;
+      const isNowOpen = isChatOpen;
+      
+      if (wasClosed && isNowOpen) {
+        chatJustOpenedRef.current = true;
+      } else {
+        chatJustOpenedRef.current = false;
+      }
+      
+      prevChatOpenRef.current = isChatOpen;
+    }, [isChatOpen]);
+    
+    // Read messages when chat is open
+    useEffect(() => {
+      // Only read messages if chat is open
+      if (!isChatOpen) return;
 
+      const lastBotMessage = findLatestBotMessage(messages);
       if (!lastBotMessage) return;
 
       // Only read if it's a new message (different from last read)
       if (lastBotMessage.id === lastReadMessageIdRef.current) return;
 
-      // For the very first message, add a delay
-      if (!hasReadFirstMessageRef.current) {
-        setTimeout(() => {
+      // If chat just opened and this is the first message to read, add a delay
+      if (chatJustOpenedRef.current && !hasReadFirstMessageRef.current) {
+        chatJustOpenedRef.current = false; // Reset flag
+        const timeoutId = setTimeout(() => {
           void readLastRelevantMessage();
         }, 500);
+        return () => clearTimeout(timeoutId);
       } else {
+        // For subsequent messages or if chat was already open, read immediately
         void readLastRelevantMessage();
       }
-    }, [messages, readLastRelevantMessage]);
+    }, [isChatOpen, messages, readLastRelevantMessage]);
 
     useEffect(() => {
       return () => {

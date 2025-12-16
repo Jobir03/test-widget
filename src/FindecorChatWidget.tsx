@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Calendar,
   Maximize2,
@@ -12,7 +12,6 @@ import {
   MicOff,
 } from "lucide-react";
 import { useChat } from "./hooks/useChat";
-import { createApiClient, type ApiClient } from "./services/api/apiClient";
 import ChatMessages from "./components/ChatMessages";
 import VoiceTalkPanel, {
   type VoiceTalkPanelRef,
@@ -49,11 +48,11 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     error,
     isTyping,
     isUploading,
-    setIsUploading,
     loadMoreMessages,
     hasMore,
     fetchingMore,
     loadingStates,
+    revealMessageAfterTTS,
   } = useChat(apiBase, socketUrl, widgetKey);
 
   const [open, setOpen] = useState(autoOpen);
@@ -65,7 +64,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
-  const apiRef = useRef<ApiClient | null>(null);
   const voiceTalkPanelRef = useRef<VoiceTalkPanelRef | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [showCallMeForm, setShowCallMeForm] = useState(false);
@@ -151,34 +149,6 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
     }
   };
 
-  const uploadFile = useCallback(
-    async (file: File): Promise<string> => {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      try {
-        if (!apiRef.current) {
-          apiRef.current = createApiClient(apiBase, widgetKey);
-        }
-        const client = apiRef.current! as ApiClient;
-        const response = await client.post<{ url: string }>(
-          "/upload/widget-user",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-        return `https://storage.googleapis.com${response.url}`;
-      } catch (error) {
-        console.error("File upload failed:", error);
-        throw error;
-      }
-    },
-    [apiBase, widgetKey]
-  );
-
   const handleVoiceToggle = async () => {
     if (!voiceTalkPanelRef.current) return;
 
@@ -242,34 +212,41 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   const handleSend = async () => {
     if ((!input.trim() && !selectedFile) || loading || isUploading || !isOnline)
       return;
-    let imageUrl = "";
+
+    const fileToSend = selectedFile;
+    const textToSend = input;
+
+    // Trigger image upload event immediately (optimistic)
+    if (fileToSend) {
+      interface WindowWithHandler extends Window {
+        __fcwImageUploadHandler?: () => void;
+      }
+      const handler = (window as WindowWithHandler).__fcwImageUploadHandler;
+      if (handler) {
+        handler();
+      }
+    }
+
+    // Clear UI immediately for optimistic feel
+    setInput("");
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    // Keep focus on input after sending
+    setTimeout(() => {
+      if (textInputRef.current) {
+        textInputRef.current.focus();
+      }
+    }, 0);
+
     try {
-      if (selectedFile) {
-        setIsUploading(true);
-        imageUrl = await uploadFile(selectedFile);
-        // Trigger image upload event to refresh homeImageUrl in ProductRecommendations
-        interface WindowWithHandler extends Window {
-          __fcwImageUploadHandler?: () => void;
-        }
-        const handler = (window as WindowWithHandler).__fcwImageUploadHandler;
-        if (handler) {
-          handler();
-        }
-      }
-      sendMessage(input, imageUrl);
-      setInput("");
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      // Keep focus on input after sending
-      setTimeout(() => {
-        if (textInputRef.current) {
-          textInputRef.current.focus();
-        }
-      }, 0);
+      // Pass file to sendMessage for optimistic UI and upload
+      await sendMessage(textToSend, "", null, null, fileToSend || null);
     } catch (error) {
       console.error("Error sending message:", error);
+      // Note: We don't restore input here as useChat handles the error state in the message list
       setTimeout(() => {
         textInputRef.current?.focus();
       }, 0);
@@ -457,6 +434,8 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
           sendMessage={sendMessage}
           messages={messages}
           onStateChange={setIsVoiceRecording}
+          onTTSComplete={revealMessageAfterTTS}
+          isChatOpen={open}
         />
         <div className="fcw-widget-shell">
           <div className={`fcw fcw-container  ${sizeClass} `}>

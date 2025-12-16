@@ -1,0 +1,15 @@
+feat: implement TTS-based message display delay and chat open message reading
+
+- Add waitingForTTS flag to ChatMessage type to track messages pending TTS completion
+- Delay bot message display until TTS API response is received
+- Keep typing animation active while messages are waiting for TTS
+- Hide messages with waitingForTTS flag in ChatMessages component
+- Add revealMessageAfterTTS callback to show messages after TTS completes
+- Update VoiceTalkPanel to call onTTSComplete callback when TTS finishes
+- Fix chat opening behavior: read last message only when chat is opened
+- Add isChatOpen prop to VoiceTalkPanel to prevent TTS requests before chat opens
+- Ensure typing animation continues until TTS completes successfully
+
+This ensures messages appear simultaneously with speech playback, eliminating delays
+and providing a smoother user experience.
+

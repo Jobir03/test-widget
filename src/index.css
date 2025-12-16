@@ -581,6 +581,8 @@
   color: rgba(0, 0, 0, 0.4);
   margin-top: 2px;
   font-weight: 400;
+  min-width: 48px;
+  /* Prevent shrinking when showing clock icon */
 }
 
 .fcw-bubble.user .fcw-time {
@@ -822,7 +824,7 @@
   background: #dc2626;
 }
 
-.fcw-input > div:first-child span {
+.fcw-input>div:first-child span {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
