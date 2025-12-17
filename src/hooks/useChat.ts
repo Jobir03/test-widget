@@ -20,6 +20,8 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const [error, setError] = useState<string | null>(null);
   const chatService = useRef<ReturnType<typeof createChatService> | null>(null);
   const apiRef = useRef<ReturnType<typeof createApiClient> | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const loadingRef = useRef<boolean>(false);
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -259,21 +261,80 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   /** Handle loading events from socket */
   const onLoadingEvent = useCallback((event: LoadingEvent) => {
     if (!event || !event.type) return;
-    setLoadingStates((prev) => ({
-      ...prev,
-      [event.type]: event.loading,
-    }));
-  }, []);
 
-  // Keep typing animation active if there are messages waiting for TTS
-  useEffect(() => {
-    const hasWaitingMessages = messages.some((msg) => msg.waitingForTTS === true);
-    if (hasWaitingMessages) {
-      // Keep ai loading state true to show typing animation
+    // For 'ai' type loading events, intelligently handle based on current state
+    if (event.type === "ai" && !event.loading) {
+      // Server is saying "stop loading" (ai: false)
+      // BUT we should ignore this if:
+      // 1. We're currently loading (user just sent a message)
+      // 2. There are messages waiting for TTS
+
+      const hasWaitingMessages = messagesRef.current.some(
+        (msg) => msg.waitingForTTS === true
+      );
+
+      // If we're currently loading OR there are messages waiting for TTS,
+      // ignore the ai:false event to maintain continuous loading
+      if (loadingRef.current || hasWaitingMessages) {
+        console.log('[Loading] Ignoring ai:false - maintaining continuous loading for TTS');
+        // Keep everything as is - don't stop loading
+        setLoadingStates((prev) => ({
+          ...prev,
+          ai: true,
+        }));
+        setIsTyping(true);
+        setLoading(true);
+        return;
+      }
+
+      // Only stop loading if we're not currently loading and no messages waiting
+      setLoadingStates((prev) => ({
+        ...prev,
+        ai: false,
+      }));
+      setIsTyping(false);
+      setLoading(false);
+    } else if (event.type === "ai" && event.loading) {
+      // Loading is becoming true, set it normally
       setLoadingStates((prev) => ({
         ...prev,
         ai: true,
       }));
+      setIsTyping(true);
+      setLoading(true);
+    } else {
+      // For other loading types, update normally
+      setLoadingStates((prev) => ({
+        ...prev,
+        [event.type]: event.loading,
+      }));
+    }
+  }, []);
+
+  // Update messages ref whenever messages change
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // Update loading ref whenever loading state changes
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  // Keep typing animation active if there are messages waiting for TTS
+  // This ensures loading continues smoothly from socket message to TTS completion
+  useEffect(() => {
+    const hasWaitingMessages = messages.some((msg) => msg.waitingForTTS === true);
+    if (hasWaitingMessages) {
+      // Keep ai loading state true to show typing animation
+      setLoadingStates((prev) => {
+        // Only update if not already true to avoid unnecessary re-renders
+        if (prev.ai) return prev;
+        return {
+          ...prev,
+          ai: true,
+        };
+      });
       setIsTyping(true);
     }
   }, [messages]);
@@ -347,11 +408,11 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         if (pendingIndex !== -1) {
           // Replace pending message with real message
           const newMessages = [...prev];
+          const pendingMsg = prev[pendingIndex];
 
           // CRITICAL: Ensure the message doesn't jump up the list if server time is behind
           // If the pending message has a later timestamp (which we forced to be at bottom),
           // keep that timestamp for the confirmed message.
-          const pendingMsg = prev[pendingIndex];
           const pendingTime = new Date(pendingMsg.timestamp).getTime();
           const serverTime = new Date(msg.timestamp).getTime();
 
@@ -382,23 +443,41 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
           return prev;
         }
         // Mark bot messages as waitingForTTS if they have text content
-        return [
-          ...prev,
-          {
-            ...msg,
-            waitingForTTS: hasTextToSpeak && !msg.isError,
-          },
-        ];
+        const newMessage = {
+          ...msg,
+          waitingForTTS: hasTextToSpeak && !msg.isError,
+        };
+
+        const updatedMessages = [...prev, newMessage];
+
+        // Update ref immediately to ensure onLoadingEvent can see the new message
+        messagesRef.current = updatedMessages;
+
+        // If message is waiting for TTS, ensure loading states are active immediately
+        // This prevents loading from stopping and restarting
+        if (newMessage.waitingForTTS) {
+          setLoadingStates((prevState) => ({
+            ...prevState,
+            ai: true,
+          }));
+          setIsTyping(true);
+          // Keep loading state true for TTS
+          setLoading(true);
+        }
+
+        return updatedMessages;
       });
 
-      // Always stop loading and uploading state when message arrives
-      // The typing animation will be re-enabled by the useEffect if waitingForTTS is true
-      setLoading(false);
-      setIsUploading(false);
-
-      // If NOT waiting for TTS, also stop typing immediately
+      // Only stop loading/uploading if NOT waiting for TTS
+      // This ensures continuous loading animation from socket to TTS completion
       if (!hasTextToSpeak || msg.isError) {
+        setLoading(false);
         setIsTyping(false);
+        setIsUploading(false);
+      } else {
+        // Keep loading and typing active for TTS, only stop uploading
+        setIsUploading(false);
+        // Don't call setLoading(false) here - keep it true for TTS
       }
     }
   }, []);
@@ -486,13 +565,8 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
 
     // Optimistic UI update
     let tempId = "";
-    let optimisticImageUrl = imageUrl;
 
-    if (file) {
-      optimisticImageUrl = URL.createObjectURL(file);
-    }
-
-    if ((text || optimisticImageUrl) && !schedule && !callRequest) {
+    if ((text || file) && !schedule && !callRequest) {
       tempId = `temp-${Date.now()}`;
 
       // Ensure the pending message appears at the bottom even if server time is ahead of client time
@@ -506,7 +580,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         id: tempId,
         from: "user",
         text: text,
-        images: optimisticImageUrl ? [optimisticImageUrl] : [],
+        images: [],
         products: [],
         timestamp: messageTime,
         isPending: true,
@@ -558,10 +632,15 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
           },
         ];
       });
-    } finally {
+      // On error, stop loading immediately since there won't be a TTS response
       setLoading(false);
       setIsUploading(false);
+      setIsTyping(false);
     }
+    // Don't stop loading in finally - let it continue until TTS completes
+    // The loading state will be stopped by revealMessageAfterTTS or onNewMessage
+    // Only stop uploading state since file upload is complete
+    setIsUploading(false);
   };
 
   const sendHomeGeneration = async (

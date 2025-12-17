@@ -609,7 +609,24 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
             <div className="fcw fcw-input">
               {selectedFile && (
                 <div className="fcw sellect-file">
-                  <span>{selectedFile.name}</span>
+                  {isUploading ? (
+                    <>
+                      <div
+                        style={{
+                          width: "14px",
+                          height: "14px",
+                          border: "2px solid currentColor",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 0.8s linear infinite",
+                          marginRight: "6px",
+                        }}
+                      />
+                      <span>{selectedFile.name}</span>
+                    </>
+                  ) : (
+                    <span>{selectedFile.name}</span>
+                  )}
                   <button onClick={removeFile} className="fcw-remove-file-btn">
                     <X size={16} />
                   </button>
@@ -626,9 +643,8 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 />
                 <label
                   htmlFor="file-upload"
-                  className={`fcw-file-upload-label${
-                    !isOnline || loading || isUploading ? " disabled" : ""
-                  }`}
+                  className={`fcw-file-upload-label${!isOnline || loading || isUploading ? " disabled" : ""
+                    }`}
                 >
                   <Paperclip size={20} />
                 </label>

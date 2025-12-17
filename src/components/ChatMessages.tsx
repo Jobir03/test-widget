@@ -76,7 +76,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages.forEach((msg) => {
     // Hide messages that are waiting for TTS to complete
     if (msg.waitingForTTS) return;
-    
+
     const d = new Date(msg.timestamp);
     const dateKey = formatDate(d);
     if (!groupedMessages[dateKey]) groupedMessages[dateKey] = [];
@@ -511,20 +511,35 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 )}
 
                 {/* Legacy support: images without type */}
-                {!msg.type && msg.images && msg.images.length > 0 && (
+                {!msg.type && (msg.images && msg.images.length > 0 || msg.isUploading) && (
                   <div
                     className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"
                       }`}
                   >
-                    <ImageMessage
-                      images={msg.images}
-                      onScrollToBottom={onScrollToBottom}
-                    />
+                    {msg.isUploading && msg.fileName ? (
+                      // Show loader with file name while uploading
+                      <div className="fcw-upload-loader">
+                        <div className="fcw-upload-spinner" />
+                        <span className="fcw-upload-filename">
+                          {msg.fileName}
+                        </span>
+                      </div>
+                    ) : (
+                      // Show actual image when upload is complete
+                      <ImageMessage
+                        images={msg.images}
+                        onScrollToBottom={onScrollToBottom}
+                      />
+                    )}
                     <span className="fcw fcw-time">
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {msg.isPending ? (
+                        <Clock size={12} />
+                      ) : (
+                        new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      )}
                     </span>
                   </div>
                 )}
