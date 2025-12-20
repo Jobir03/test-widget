@@ -22328,7 +22328,7 @@
                   },
                   "aria-live": "polite",
                   children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Mic, { size: 38 }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Mic, { size: 32 }),
                     showBars && /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "span",
                       {

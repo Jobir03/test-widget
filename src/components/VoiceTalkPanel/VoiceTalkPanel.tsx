@@ -814,7 +814,7 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
             }}
             aria-live="polite"
           >
-            <Mic size={38} />
+            <Mic size={32} />
             {showBars && (
               <span
                 className={`fcw-voice-bars ${mode === "responding" ? "responding" : ""

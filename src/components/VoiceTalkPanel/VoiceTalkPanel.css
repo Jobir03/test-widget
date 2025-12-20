@@ -2,13 +2,13 @@
   width: 350px;
   min-width: 260px;
   background: linear-gradient(180deg, #0f172a, #1e293b);
-  padding: 32px 20px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   color: white;
   box-shadow: 0 15px 40px rgba(15, 23, 42, 0.35);
-  gap: 32px;
+  gap: 18px;
   font-family: var(--fcw-font-family), "Inter", sans-serif;
   flex-shrink: 0;
 }
@@ -18,8 +18,8 @@
   .fcw-voice-panel {
     width: 100%;
     min-width: auto;
-    padding: 20px 16px;
-    gap: 20px;
+    padding: 16px 14px;
+    gap: 14px;
   }
 
   .fcw-voice-header {
@@ -51,9 +51,9 @@
 /* Mobile */
 @media (max-width: 680px) {
   .fcw-voice-panel {
-    padding: 18px 14px;
-    gap: 16px;
-    min-height: 170px;
+    padding: 14px 12px;
+    gap: 12px;
+    min-height: 140px;
     flex-shrink: 0;
   }
 
@@ -66,12 +66,12 @@
   }
 
   .fcw-voice-mic {
-    width: 100px !important;
-    height: 100px !important;
+    width: 85px !important;
+    height: 85px !important;
   }
 
   .fcw-voice-center p {
-    font-size: 13px !important;
+    display: none !important;
   }
 }
 
@@ -87,7 +87,7 @@
 .fcw-voice-header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-align: left;
 }
 
@@ -100,12 +100,12 @@
 .fcw-voice-header p {
   margin: 0;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .fcw-voice-header span {
   font-weight: 400;
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -113,8 +113,8 @@
   background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -131,15 +131,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   text-align: center;
   flex: 1;
   justify-content: center;
 }
 
 .fcw-voice-mic {
-  width: 140px;
-  height: 140px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   border: none;
   background: radial-gradient(circle, #6366f1, #4338ca);
@@ -184,10 +184,12 @@
   position: absolute;
   inset: -30px;
   border-radius: 50%;
-  background: radial-gradient(circle,
-      rgba(59, 130, 246, 0.4),
-      rgba(37, 99, 235, 0.2) 50%,
-      transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.4),
+    rgba(37, 99, 235, 0.2) 50%,
+    transparent 70%
+  );
   animation: fcw-voice-circle-glow 2.5s ease-in-out infinite;
   pointer-events: none;
   filter: blur(20px);
@@ -230,9 +232,11 @@
   position: absolute;
   inset: -15px;
   border-radius: 50%;
-  background: radial-gradient(circle,
-      rgba(99, 102, 241, 0.15),
-      transparent 65%);
+  background: radial-gradient(
+    circle,
+    rgba(99, 102, 241, 0.15),
+    transparent 65%
+  );
   animation: fcw-voice-gentle-pulse 3s ease-in-out infinite;
   pointer-events: none;
 }
@@ -258,7 +262,7 @@
 
 .fcw-voice-center p {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.85);
 }
 
@@ -275,7 +279,6 @@
 }
 
 @keyframes fcw-voice-circle-pulse {
-
   0%,
   100% {
     transform: scale(1);
@@ -289,7 +292,6 @@
 }
 
 @keyframes fcw-voice-circle-glow {
-
   0%,
   100% {
     transform: scale(1);
@@ -319,7 +321,6 @@
 }
 
 @keyframes fcw-voice-gentle-pulse {
-
   0%,
   100% {
     transform: scale(1);
