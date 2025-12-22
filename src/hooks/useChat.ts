@@ -22,6 +22,9 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const apiRef = useRef<ReturnType<typeof createApiClient> | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   const loadingRef = useRef<boolean>(false);
+  const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -29,12 +32,15 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   const [hasMore, setHasMore] = useState(true);
   const [fetchingMore, setFetchingMore] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
-  const [loadingStates, setLoadingStates] = useState<Record<LoadingType, boolean>>({
+  const [loadingStates, setLoadingStates] = useState<
+    Record<LoadingType, boolean>
+  >({
     schedule: false,
     callRequest: false,
     image: false,
     ai: false,
     roomGeneration: false,
+    processing: false,
   });
 
   const isOnline = () =>
@@ -52,13 +58,13 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     timestamp: new Date(m.createdAt),
     user: m.widgetUser
       ? {
-        id: m.widgetUser.id,
-        name:
-          [m.widgetUser.firstName, m.widgetUser.lastName]
-            .filter(Boolean)
-            .join(" ") || undefined,
-        email: m.widgetUser.email || undefined,
-      }
+          id: m.widgetUser.id,
+          name:
+            [m.widgetUser.firstName, m.widgetUser.lastName]
+              .filter(Boolean)
+              .join(" ") || undefined,
+          email: m.widgetUser.email || undefined,
+        }
       : undefined,
     type: m.type,
     description: m.description ?? null, // Legacy support
@@ -92,17 +98,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       const response = await apiRef.current.get<
         | PaginatedResponse<ServerMessage>
         | {
-          data: ServerMessage[];
-          total?: number;
-          page?: number;
-          totalPages?: number;
-          meta?: {
-            total: number;
-            perPage: number;
-            currentPage: number;
-            totalPages: number;
-          };
-        }
+            data: ServerMessage[];
+            total?: number;
+            page?: number;
+            totalPages?: number;
+            meta?: {
+              total: number;
+              perPage: number;
+              currentPage: number;
+              totalPages: number;
+            };
+          }
       >("/messages", { params: { page: 1, limit: 30 } });
 
       // Handle both response formats
@@ -181,17 +187,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       const response = await apiRef.current.get<
         | PaginatedResponse<ServerMessage>
         | {
-          data: ServerMessage[];
-          total?: number;
-          page?: number;
-          totalPages?: number;
-          meta?: {
-            total: number;
-            perPage: number;
-            currentPage: number;
-            totalPages: number;
-          };
-        }
+            data: ServerMessage[];
+            total?: number;
+            page?: number;
+            totalPages?: number;
+            meta?: {
+              total: number;
+              perPage: number;
+              currentPage: number;
+              totalPages: number;
+            };
+          }
       >("/messages", { params: { page: nextPage, limit: 30 } });
 
       // Handle both response formats
@@ -239,15 +245,11 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
 
       try {
         const client = apiRef.current as any;
-        const response = await client.post(
-          "/upload/widget-user",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        const response = await client.post("/upload/widget-user", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         const url = response.url || response.data?.url;
         return `https://storage.googleapis.com${url}`;
       } catch (error) {
@@ -259,57 +261,128 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   );
 
   /** Handle loading events from socket */
-  const onLoadingEvent = useCallback((event: LoadingEvent) => {
-    if (!event || !event.type) return;
+  const onLoadingEvent = useCallback(
+    (event: LoadingEvent) => {
+      if (!event || !event.type) return;
 
-    // For 'ai' type loading events, intelligently handle based on current state
-    if (event.type === "ai" && !event.loading) {
-      // Server is saying "stop loading" (ai: false)
-      // BUT we should ignore this if:
-      // 1. We're currently loading (user just sent a message)
-      // 2. There are messages waiting for TTS
+      // For 'processing' type loading events
+      if (event.type === "processing") {
+        // Clear timeout since processing type came
+        if (processingTimeoutRef.current) {
+          clearTimeout(processingTimeoutRef.current);
+          processingTimeoutRef.current = null;
+        }
 
-      const hasWaitingMessages = messagesRef.current.some(
-        (msg) => msg.waitingForTTS === true
-      );
+        setLoadingStates((prev) => ({
+          ...prev,
+          processing: event.loading,
+        }));
 
-      // If we're currently loading OR there are messages waiting for TTS,
-      // ignore the ai:false event to maintain continuous loading
-      if (loadingRef.current || hasWaitingMessages) {
-        console.log('[Loading] Ignoring ai:false - maintaining continuous loading for TTS');
-        // Keep everything as is - don't stop loading
+        // If processing is false, check if we should stop loading
+        if (!event.loading) {
+          // Check if there are messages waiting for TTS
+          const hasWaitingMessages = messagesRef.current.some(
+            (msg) => msg.waitingForTTS === true
+          );
+
+          // If no messages waiting for TTS, stop loading
+          if (!hasWaitingMessages) {
+            setLoadingStates((prev) => ({
+              ...prev,
+              ai: false,
+              processing: false,
+            }));
+            setIsTyping(false);
+            setLoading(false);
+          }
+        }
+        return;
+      }
+
+      // For 'ai' type loading events, intelligently handle based on current state
+      if (event.type === "ai" && !event.loading) {
+        // Server is saying "stop loading" (ai: false)
+        // BUT we should ignore this if:
+        // 1. We're currently loading (user just sent a message)
+        // 2. There are messages waiting for TTS
+        // 3. Processing is still active
+
+        const hasWaitingMessages = messagesRef.current.some(
+          (msg) => msg.waitingForTTS === true
+        );
+
+        const isProcessing = loadingStates.processing;
+
+        // If we're currently loading OR there are messages waiting for TTS OR processing is active,
+        // ignore the ai:false event to maintain continuous loading
+        if (loadingRef.current || hasWaitingMessages || isProcessing) {
+          console.log(
+            "[Loading] Ignoring ai:false - maintaining continuous loading for TTS or processing"
+          );
+          // Keep everything as is - don't stop loading
+          setLoadingStates((prev) => ({
+            ...prev,
+            ai: true,
+          }));
+          setIsTyping(true);
+          setLoading(true);
+          return;
+        }
+
+        // Only stop loading if we're not currently loading and no messages waiting and not processing
+        setLoadingStates((prev) => ({
+          ...prev,
+          ai: false,
+        }));
+        setIsTyping(false);
+        setLoading(false);
+      } else if (event.type === "ai" && event.loading) {
+        // Loading is becoming true, set it normally
         setLoadingStates((prev) => ({
           ...prev,
           ai: true,
         }));
         setIsTyping(true);
         setLoading(true);
-        return;
-      }
 
-      // Only stop loading if we're not currently loading and no messages waiting
-      setLoadingStates((prev) => ({
-        ...prev,
-        ai: false,
-      }));
-      setIsTyping(false);
-      setLoading(false);
-    } else if (event.type === "ai" && event.loading) {
-      // Loading is becoming true, set it normally
-      setLoadingStates((prev) => ({
-        ...prev,
-        ai: true,
-      }));
-      setIsTyping(true);
-      setLoading(true);
-    } else {
-      // For other loading types, update normally
-      setLoadingStates((prev) => ({
-        ...prev,
-        [event.type]: event.loading,
-      }));
-    }
-  }, []);
+        // Clear any existing timeout
+        if (processingTimeoutRef.current) {
+          clearTimeout(processingTimeoutRef.current);
+          processingTimeoutRef.current = null;
+        }
+
+        // If processing type doesn't come within 3 seconds, stop loading
+        processingTimeoutRef.current = setTimeout(() => {
+          const hasWaitingMessages = messagesRef.current.some(
+            (msg) => msg.waitingForTTS === true
+          );
+          const isProcessing = loadingStates.processing;
+
+          // Only stop if not processing and no messages waiting for TTS
+          if (!isProcessing && !hasWaitingMessages) {
+            console.log(
+              "[Loading] Processing type not received, stopping loading"
+            );
+            setLoadingStates((prev) => ({
+              ...prev,
+              ai: false,
+              processing: false,
+            }));
+            setIsTyping(false);
+            setLoading(false);
+          }
+          processingTimeoutRef.current = null;
+        }, 3000);
+      } else {
+        // For other loading types, update normally
+        setLoadingStates((prev) => ({
+          ...prev,
+          [event.type]: event.loading,
+        }));
+      }
+    },
+    [loadingStates.processing]
+  );
 
   // Update messages ref whenever messages change
   useEffect(() => {
@@ -321,10 +394,21 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     loadingRef.current = loading;
   }, [loading]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Keep typing animation active if there are messages waiting for TTS
   // This ensures loading continues smoothly from socket message to TTS completion
   useEffect(() => {
-    const hasWaitingMessages = messages.some((msg) => msg.waitingForTTS === true);
+    const hasWaitingMessages = messages.some(
+      (msg) => msg.waitingForTTS === true
+    );
     if (hasWaitingMessages) {
       // Keep ai loading state true to show typing animation
       setLoadingStates((prev) => {
@@ -397,12 +481,15 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
           (m) =>
             m.isPending &&
             m.from === "user" &&
-            (
-              // Case A: Text matches (and both might have images or not, primary key is text)
-              (msgContent && (m.text === msgContent || m.question === msgContent)) ||
+            // Case A: Text matches (and both might have images or not, primary key is text)
+            ((msgContent &&
+              (m.text === msgContent || m.question === msgContent)) ||
               // Case B: Both have NO text, but both HAVE images (assuming serial upload of images)
-              (!msgContent && !m.text && !m.question && m.images.length > 0 && msg.images.length > 0)
-            )
+              (!msgContent &&
+                !m.text &&
+                !m.question &&
+                m.images.length > 0 &&
+                msg.images.length > 0))
         );
 
         if (pendingIndex !== -1) {
@@ -560,7 +647,10 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     callRequest?: CallRequestPayload | null,
     file?: File | null
   ) => {
-    if (!chatService.current || (!text.trim() && !imageUrl && !schedule && !callRequest && !file))
+    if (
+      !chatService.current ||
+      (!text.trim() && !imageUrl && !schedule && !callRequest && !file)
+    )
       return;
 
     // Optimistic UI update
@@ -572,7 +662,10 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       // Ensure the pending message appears at the bottom even if server time is ahead of client time
       const lastMessage = messages[messages.length - 1];
       let messageTime = new Date();
-      if (lastMessage && new Date(lastMessage.timestamp).getTime() > messageTime.getTime()) {
+      if (
+        lastMessage &&
+        new Date(lastMessage.timestamp).getTime() > messageTime.getTime()
+      ) {
         messageTime = new Date(new Date(lastMessage.timestamp).getTime() + 1);
       }
 
@@ -599,7 +692,12 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         finalImageUrl = await uploadFile(file);
       }
 
-      await chatService.current.sendMessage(text, finalImageUrl, schedule, callRequest);
+      await chatService.current.sendMessage(
+        text,
+        finalImageUrl,
+        schedule,
+        callRequest
+      );
     } catch {
       setError("Failed to send message");
       setMessages((prev) => {

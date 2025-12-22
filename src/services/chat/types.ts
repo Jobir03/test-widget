@@ -116,7 +116,8 @@ export type LoadingType =
   | "callRequest"
   | "image"
   | "ai"
-  | "roomGeneration";
+  | "roomGeneration"
+  | "processing";
 
 export interface LoadingEvent {
   type: LoadingType;

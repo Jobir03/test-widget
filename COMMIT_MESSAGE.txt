@@ -1,24 +1,15 @@
-fix: improve mobile responsiveness and fix scrolling issues
+feat: implement TTS-based message display delay and chat open message reading
 
-- Fix mobile input focus zoom issue by setting font-size to 16px on mobile devices
-- Add proper overflow constraints to prevent input field expansion on mobile
-- Reduce Voice Companion panel size for better chat space utilization:
-  * Decrease padding from 32px to 20px on desktop
-  * Reduce gap from 32px to 18px
-  * Shrink microphone button from 140px to 110px
-  * Reduce mic icon size from 38px to 32px
-  * Adjust header and button sizes for compact layout
-- Hide "Voice assistant" text on mobile devices (max-width: 680px)
-- Fix mobile scrolling issues:
-  * Add -webkit-overflow-scrolling: touch for smooth iOS scrolling
-  * Add touch-action: pan-y for proper touch handling
-  * Add overscroll-behavior: contain to prevent scroll chaining
-  * Ensure proper flex layout with min-height: 0 for scrollable containers
-- Improve mobile layout styling:
-  * Add border-radius to dual-layout container on mobile
-  * Set transparent background for better visual integration
-  * Adjust border-radius for voice panel and container sections
-  * Add proper padding and spacing adjustments
+- Add waitingForTTS flag to ChatMessage type to track messages pending TTS completion
+- Delay bot message display until TTS API response is received
+- Keep typing animation active while messages are waiting for TTS
+- Hide messages with waitingForTTS flag in ChatMessages component
+- Add revealMessageAfterTTS callback to show messages after TTS completes
+- Update VoiceTalkPanel to call onTTSComplete callback when TTS finishes
+- Fix chat opening behavior: read last message only when chat is opened
+- Add isChatOpen prop to VoiceTalkPanel to prevent TTS requests before chat opens
+- Ensure typing animation continues until TTS completes successfully
 
-These changes improve the mobile user experience by fixing input focus issues,
-enabling proper scrolling, and optimizing space usage for chat messages.
+This ensures messages appear simultaneously with speech playback, eliminating delays
+and providing a smoother user experience.
+
