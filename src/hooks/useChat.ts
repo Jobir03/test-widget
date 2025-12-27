@@ -58,13 +58,13 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     timestamp: new Date(m.createdAt),
     user: m.widgetUser
       ? {
-          id: m.widgetUser.id,
-          name:
-            [m.widgetUser.firstName, m.widgetUser.lastName]
-              .filter(Boolean)
-              .join(" ") || undefined,
-          email: m.widgetUser.email || undefined,
-        }
+        id: m.widgetUser.id,
+        name:
+          [m.widgetUser.firstName, m.widgetUser.lastName]
+            .filter(Boolean)
+            .join(" ") || undefined,
+        email: m.widgetUser.email || undefined,
+      }
       : undefined,
     type: m.type,
     description: m.description ?? null, // Legacy support
@@ -98,17 +98,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       const response = await apiRef.current.get<
         | PaginatedResponse<ServerMessage>
         | {
-            data: ServerMessage[];
-            total?: number;
-            page?: number;
-            totalPages?: number;
-            meta?: {
-              total: number;
-              perPage: number;
-              currentPage: number;
-              totalPages: number;
-            };
-          }
+          data: ServerMessage[];
+          total?: number;
+          page?: number;
+          totalPages?: number;
+          meta?: {
+            total: number;
+            perPage: number;
+            currentPage: number;
+            totalPages: number;
+          };
+        }
       >("/messages", { params: { page: 1, limit: 30 } });
 
       // Handle both response formats
@@ -187,17 +187,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       const response = await apiRef.current.get<
         | PaginatedResponse<ServerMessage>
         | {
-            data: ServerMessage[];
-            total?: number;
-            page?: number;
-            totalPages?: number;
-            meta?: {
-              total: number;
-              perPage: number;
-              currentPage: number;
-              totalPages: number;
-            };
-          }
+          data: ServerMessage[];
+          total?: number;
+          page?: number;
+          totalPages?: number;
+          meta?: {
+            total: number;
+            perPage: number;
+            currentPage: number;
+            totalPages: number;
+          };
+        }
       >("/messages", { params: { page: nextPage, limit: 30 } });
 
       // Handle both response formats
@@ -353,13 +353,10 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
 
         // If processing type doesn't come within 3 seconds, stop loading
         processingTimeoutRef.current = setTimeout(() => {
-          const hasWaitingMessages = messagesRef.current.some(
-            (msg) => msg.waitingForTTS === true
-          );
           const isProcessing = loadingStates.processing;
 
-          // Only stop if not processing and no messages waiting for TTS
-          if (!isProcessing && !hasWaitingMessages) {
+          // Only stop if not processing
+          if (!isProcessing) {
             console.log(
               "[Loading] Processing type not received, stopping loading"
             );
@@ -404,23 +401,11 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
   }, []);
 
   // Keep typing animation active if there are messages waiting for TTS
-  // This ensures loading continues smoothly from socket message to TTS completion
+  // This is no longer strictly needed for blocking display, but we can keep it clean
   useEffect(() => {
-    const hasWaitingMessages = messages.some(
-      (msg) => msg.waitingForTTS === true
-    );
-    if (hasWaitingMessages) {
-      // Keep ai loading state true to show typing animation
-      setLoadingStates((prev) => {
-        // Only update if not already true to avoid unnecessary re-renders
-        if (prev.ai) return prev;
-        return {
-          ...prev,
-          ai: true,
-        };
-      });
-      setIsTyping(true);
-    }
+    // No-op or remove if not needed.
+    // Since we removed waitingForTTS logic for display, this effect is largely redundant
+    // for keeping ai loading state true.
   }, [messages]);
 
   /** Reveal message after TTS completes */
@@ -529,10 +514,13 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         if (prev.some((m) => m.id === msg.id)) {
           return prev;
         }
-        // Mark bot messages as waitingForTTS if they have text content
+        // Mark bot messages with typing effect, but show immediately (waitingForTTS: false)
         const newMessage = {
           ...msg,
-          waitingForTTS: hasTextToSpeak && !msg.isError,
+          // CRITICAL: Always show immediately, never wait for TTS
+          waitingForTTS: false,
+          // CRITICAL: Always use typing effect for text content
+          isTypingEffect: hasTextToSpeak && !msg.isError,
         };
 
         const updatedMessages = [...prev, newMessage];
@@ -540,31 +528,22 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         // Update ref immediately to ensure onLoadingEvent can see the new message
         messagesRef.current = updatedMessages;
 
-        // If message is waiting for TTS, ensure loading states are active immediately
-        // This prevents loading from stopping and restarting
-        if (newMessage.waitingForTTS) {
-          setLoadingStates((prevState) => ({
-            ...prevState,
-            ai: true,
-          }));
-          setIsTyping(true);
-          // Keep loading state true for TTS
-          setLoading(true);
-        }
-
         return updatedMessages;
       });
 
-      // Only stop loading/uploading if NOT waiting for TTS
-      // This ensures continuous loading animation from socket to TTS completion
+      // Stop generic loading/typing indicators immediately as the message is now visible (and will type itself)
+      if (hasTextToSpeak && !msg.isError) {
+        setLoading(false);
+        setIsTyping(false);
+        setLoadingStates((prev) => ({ ...prev, ai: false }));
+      }
+
       if (!hasTextToSpeak || msg.isError) {
         setLoading(false);
         setIsTyping(false);
         setIsUploading(false);
       } else {
-        // Keep loading and typing active for TTS, only stop uploading
         setIsUploading(false);
-        // Don't call setLoading(false) here - keep it true for TTS
       }
     }
   }, []);

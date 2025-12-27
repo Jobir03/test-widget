@@ -152,6 +152,7 @@ export interface ChatMessage {
   room_image_link?: string | null; // Room image link for image_generation type
   isPending?: boolean; // Optimistic UI state
   waitingForTTS?: boolean; // Message is waiting for TTS to complete before being displayed
+  isTypingEffect?: boolean; // Show typing animation for message text
   fileName?: string; // File name for pending uploads
   isUploading?: boolean; // Flag to show upload loader instead of image
 }
