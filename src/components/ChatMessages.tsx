@@ -561,7 +561,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         : undefined
                     }
                   >
-                    <div className="fcw fcw-message-text">{msg.text}</div>
+                    <div className="fcw fcw-message-text">
+                      {msg.isTypingEffect ? (
+                        <TypewriterText
+                          text={msg.text}
+                          onComplete={onScrollToBottom}
+                        />
+                      ) : (
+                        msg.text
+                      )}
+                    </div>
                     <div className="fcw fcw-time">
                       {msg.isPending ? (
                         <Clock size={12} />

@@ -63,12 +63,12 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
     const [levels, setLevels] = useState([0.25, 0.5, 0.35]);
     const [isSupported, setIsSupported] = useState(true);
     const [isRecording, setIsRecording] = useState(false);
-    const [isAgentMuted, setIsAgentMuted] = useState(false);
+    const [isAgentMuted, setIsAgentMuted] = useState(true);
     const [isMicActive, setIsMicActive] = useState(false); // To signal user intent
 
     // Refs for state access inside callbacks/effects without deps
     const isRecordingRef = useRef(false);
-    const isAgentMutedRef = useRef(false);
+    const isAgentMutedRef = useRef(true);
 
     // Sync ref with state
     useEffect(() => {
@@ -692,21 +692,21 @@ const VoiceTalkPanel = forwardRef<VoiceTalkPanelRef, VoiceTalkPanelProps>(
     // Track previous chat open state to detect when chat opens
     const prevChatOpenRef = useRef(isChatOpen);
     const chatJustOpenedRef = useRef(false);
-    
+
     // Track when chat opens
     useEffect(() => {
       const wasClosed = !prevChatOpenRef.current;
       const isNowOpen = isChatOpen;
-      
+
       if (wasClosed && isNowOpen) {
         chatJustOpenedRef.current = true;
       } else {
         chatJustOpenedRef.current = false;
       }
-      
+
       prevChatOpenRef.current = isChatOpen;
     }, [isChatOpen]);
-    
+
     // Read messages when chat is open
     useEffect(() => {
       // Only read messages if chat is open

@@ -307,27 +307,9 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         // 2. There are messages waiting for TTS
         // 3. Processing is still active
 
-        const hasWaitingMessages = messagesRef.current.some(
-          (msg) => msg.waitingForTTS === true
-        );
 
-        const isProcessing = loadingStates.processing;
 
-        // If we're currently loading OR there are messages waiting for TTS OR processing is active,
-        // ignore the ai:false event to maintain continuous loading
-        if (loadingRef.current || hasWaitingMessages || isProcessing) {
-          console.log(
-            "[Loading] Ignoring ai:false - maintaining continuous loading for TTS or processing"
-          );
-          // Keep everything as is - don't stop loading
-          setLoadingStates((prev) => ({
-            ...prev,
-            ai: true,
-          }));
-          setIsTyping(true);
-          setLoading(true);
-          return;
-        }
+
 
         // Only stop loading if we're not currently loading and no messages waiting and not processing
         setLoadingStates((prev) => ({
@@ -352,6 +334,8 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         }
 
         // If processing type doesn't come within 3 seconds, stop loading
+        // REMOVED: User requested to keep loading until explicitly turned off
+        /*
         processingTimeoutRef.current = setTimeout(() => {
           const isProcessing = loadingStates.processing;
 
@@ -370,6 +354,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
           }
           processingTimeoutRef.current = null;
         }, 3000);
+        */
       } else {
         // For other loading types, update normally
         setLoadingStates((prev) => ({
@@ -503,6 +488,7 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         }
         return [...prev, msg];
       });
+      setIsUploading(false);
     } else {
       // For bot messages, mark as waitingForTTS if it has text to speak
       const hasTextToSpeak = Boolean(
