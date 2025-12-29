@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   Calendar,
   Maximize2,
@@ -368,6 +368,13 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
   }, []);
   */
 
+  const handleScrollToBottom = useCallback(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
+    }
+  }, []);
+
   return (
     <div ref={widgetRef} className="fcw-root">
       {!open && (
@@ -519,12 +526,7 @@ const FindecorChatWidget: React.FC<FindecorChatWidgetProps> = ({
                 isGeneratingImage={isGeneratingImage}
                 onGeneratingImageChange={setIsGeneratingImage}
                 loadingStates={loadingStates}
-                onScrollToBottom={() => {
-                  if (messagesContainerRef.current) {
-                    messagesContainerRef.current.scrollTop =
-                      messagesContainerRef.current.scrollHeight;
-                  }
-                }}
+                onScrollToBottom={handleScrollToBottom}
                 onCloseChat={handleCloseViaDetails}
               />
 

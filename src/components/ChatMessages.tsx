@@ -49,19 +49,36 @@ const TypewriterText: React.FC<{
   const currentIndexRef = React.useRef(0);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = React.useRef(false);
+  const lastTextRef = React.useRef<string>("");
+  const hasCompletedRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
+    // If this text was already completed, show it immediately without animation
+    if (hasCompletedRef.current.has(text)) {
+      setDisplayedText(text);
+      currentIndexRef.current = text.length;
+      completedRef.current = true;
+      return;
+    }
+
+    // If text hasn't changed, don't restart animation
+    if (lastTextRef.current === text && completedRef.current) {
+      return;
+    }
+
     // Reset on text change
     setDisplayedText("");
     currentIndexRef.current = 0;
     completedRef.current = false;
+    lastTextRef.current = text;
 
     if (!text) {
       onComplete?.();
       return;
     }
 
-    const targetDuration = 3000;
+    // Uzunroq text (100+ belgi) uchun 2 sekund, qisqaroq uchun 1.5 sekund
+    const targetDuration = text.length >= 100 ? 2000 : 1500;
     const calculatedDelay = targetDuration / text.length;
     const delay = Math.min(Math.max(calculatedDelay, 10), 50);
 
@@ -72,6 +89,7 @@ const TypewriterText: React.FC<{
         timeoutRef.current = setTimeout(typeNextChar, delay);
       } else if (!completedRef.current) {
         completedRef.current = true;
+        hasCompletedRef.current.add(text);
         onComplete?.();
       }
     };
@@ -83,7 +101,8 @@ const TypewriterText: React.FC<{
     };
   }, [text, onComplete]);
 
-  const isTyping = currentIndexRef.current < text.length && !completedRef.current;
+  const isTyping =
+    currentIndexRef.current < text.length && !completedRef.current;
 
   return (
     <span>
@@ -102,7 +121,15 @@ const SequentialTypewriterMessage: React.FC<{
   from: "user" | "bot";
   isError?: boolean;
   onScrollToBottom?: () => void;
-}> = ({ information, question, isTypingEffect, timestamp, from, isError, onScrollToBottom }) => {
+}> = ({
+  information,
+  question,
+  isTypingEffect,
+  timestamp,
+  from,
+  isError,
+  onScrollToBottom,
+}) => {
   // Phase: 0 = typing info, 1 = typing question, 2 = complete
   const [phase, setPhase] = React.useState(() => {
     if (!isTypingEffect) return 2; // Skip animation
@@ -135,7 +162,10 @@ const SequentialTypewriterMessage: React.FC<{
       {/* Information bubble - always show if exists */}
       {information && (
         <div className={`fcw fcw-bubble ${from === "user" ? "user" : "bot"}`}>
-          <div className="fcw fcw-message-text" style={{ whiteSpace: "pre-line" }}>
+          <div
+            className="fcw fcw-message-text"
+            style={{ whiteSpace: "pre-line" }}
+          >
             {phase === 0 && isTypingEffect ? (
               <TypewriterText
                 text={information}
@@ -151,18 +181,23 @@ const SequentialTypewriterMessage: React.FC<{
       {/* Question bubble - only show after information completes (phase >= 1) */}
       {question && phase >= 1 && (
         <div
-          className={`fcw fcw-bubble ${from === "user" ? "user" : "bot"} ${isError ? "fcw-error-message" : ""}`}
+          className={`fcw fcw-bubble ${from === "user" ? "user" : "bot"} ${
+            isError ? "fcw-error-message" : ""
+          }`}
           style={
             isError
               ? {
-                backgroundColor: "#fee2e2",
-                color: "#991b1b",
-                border: "1px solid #fca5a5",
-              }
+                  backgroundColor: "#fee2e2",
+                  color: "#991b1b",
+                  border: "1px solid #fca5a5",
+                }
               : undefined
           }
         >
-          <div className="fcw fcw-message-text" style={{ whiteSpace: "pre-line" }}>
+          <div
+            className="fcw fcw-message-text"
+            style={{ whiteSpace: "pre-line" }}
+          >
             {phase === 1 && isTypingEffect ? (
               <TypewriterText
                 text={question}
@@ -257,7 +292,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Products */}
                     {msg.products && msg.products.length > 0 && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"}`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <ProductRecommendations
                           products={msg.products}
@@ -310,7 +347,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                     {/* Generated Photo */}
                     {msg?.generated_photo && (
                       <div
-                        className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"}`}
+                        className={`fcw fcw-bubble ${
+                          msg.from === "user" ? "user" : "bot"
+                        }`}
                       >
                         <ImageMessage
                           images={[msg?.generated_photo]}
@@ -363,12 +402,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         : null;
                       const bookedTimeFormatted = bookedTime
                         ? bookedTime.toLocaleString([], {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                         : undefined;
 
                       return (
@@ -418,13 +457,17 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                               {scheduleResponse?.branch?.name && (
                                 <div style={{ color: "#4b5563" }}>
                                   <span style={{ opacity: 0.8 }}>Branch:</span>{" "}
-                                  <strong>{scheduleResponse.branch.name}</strong>
+                                  <strong>
+                                    {scheduleResponse.branch.name}
+                                  </strong>
                                 </div>
                               )}
                               {scheduleResponse?.product?.name && (
                                 <div style={{ color: "#4b5563" }}>
                                   <span style={{ opacity: 0.8 }}>Product:</span>{" "}
-                                  <strong>{scheduleResponse.product.name}</strong>
+                                  <strong>
+                                    {scheduleResponse.product.name}
+                                  </strong>
                                 </div>
                               )}
                               {bookedTimeFormatted && (
@@ -435,22 +478,24 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                               )}
                               {(scheduleResponse?.customerName ||
                                 scheduleResponse?.widgetUser?.firstName) && (
-                                  <div style={{ color: "#6b7280", marginTop: 2 }}>
-                                    <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
-                                    {scheduleResponse?.customerName ||
-                                      scheduleResponse.widgetUser?.firstName}
-                                    {(scheduleResponse?.contactInfo ||
-                                      scheduleResponse?.widgetUser?.contact) && (
-                                        <span>
-                                          {" "}
-                                          (
-                                          {scheduleResponse?.contactInfo ||
-                                            scheduleResponse.widgetUser?.contact}
-                                          )
-                                        </span>
-                                      )}
-                                  </div>
-                                )}
+                                <div style={{ color: "#6b7280", marginTop: 2 }}>
+                                  <span style={{ opacity: 0.9 }}>
+                                    Customer:
+                                  </span>{" "}
+                                  {scheduleResponse?.customerName ||
+                                    scheduleResponse.widgetUser?.firstName}
+                                  {(scheduleResponse?.contactInfo ||
+                                    scheduleResponse?.widgetUser?.contact) && (
+                                    <span>
+                                      {" "}
+                                      (
+                                      {scheduleResponse?.contactInfo ||
+                                        scheduleResponse.widgetUser?.contact}
+                                      )
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                           {/* Sequential: Information then Question */}
@@ -471,7 +516,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {/* Legacy support: description */}
                 {!msg.type && msg.description && (
                   <div
-                    className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"}`}
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    }`}
                   >
                     <div className="fcw fcw-message-text">
                       {msg.isTypingEffect ? (
@@ -492,7 +539,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {/* Legacy support: products without type */}
                 {!msg.type && msg.products && msg.products.length > 0 && (
                   <div
-                    className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"}`}
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    }`}
                   >
                     <ProductRecommendations
                       products={msg.products}
@@ -517,9 +566,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
 
                 {/* Legacy support: images without type */}
                 {!msg.type &&
-                  (msg.images && msg.images.length > 0 || msg.isUploading) && (
+                  ((msg.images && msg.images.length > 0) ||
+                    msg.isUploading) && (
                     <div
-                      className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"}`}
+                      className={`fcw fcw-bubble ${
+                        msg.from === "user" ? "user" : "bot"
+                      }`}
                     >
                       {msg.isUploading && msg.fileName ? (
                         <div className="fcw-upload-loader">
@@ -550,14 +602,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 {/* Legacy support: text */}
                 {!msg.type && msg.text && (
                   <div
-                    className={`fcw fcw-bubble ${msg.from === "user" ? "user" : "bot"} ${msg.isError ? "fcw-error-message" : ""}`}
+                    className={`fcw fcw-bubble ${
+                      msg.from === "user" ? "user" : "bot"
+                    } ${msg.isError ? "fcw-error-message" : ""}`}
                     style={
                       msg.isError
                         ? {
-                          backgroundColor: "#fee2e2",
-                          color: "#991b1b",
-                          border: "1px solid #fca5a5",
-                        }
+                            backgroundColor: "#fee2e2",
+                            color: "#991b1b",
+                            border: "1px solid #fca5a5",
+                          }
                         : undefined
                     }
                   >
@@ -611,12 +665,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                         : null;
                       const bookedTimeFormatted = bookedTime
                         ? bookedTime.toLocaleString([], {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                         : undefined;
 
                       return (
@@ -682,22 +736,22 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                             )}
                             {(scheduleResponse?.customerName ||
                               scheduleResponse?.widgetUser?.firstName) && (
-                                <div style={{ color: "#6b7280", marginTop: 2 }}>
-                                  <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
-                                  {scheduleResponse?.customerName ||
-                                    scheduleResponse.widgetUser?.firstName}
-                                  {(scheduleResponse?.contactInfo ||
-                                    scheduleResponse?.widgetUser?.contact) && (
-                                      <span>
-                                        {" "}
-                                        (
-                                        {scheduleResponse?.contactInfo ||
-                                          scheduleResponse.widgetUser?.contact}
-                                        )
-                                      </span>
-                                    )}
-                                </div>
-                              )}
+                              <div style={{ color: "#6b7280", marginTop: 2 }}>
+                                <span style={{ opacity: 0.9 }}>Customer:</span>{" "}
+                                {scheduleResponse?.customerName ||
+                                  scheduleResponse.widgetUser?.firstName}
+                                {(scheduleResponse?.contactInfo ||
+                                  scheduleResponse?.widgetUser?.contact) && (
+                                  <span>
+                                    {" "}
+                                    (
+                                    {scheduleResponse?.contactInfo ||
+                                      scheduleResponse.widgetUser?.contact}
+                                    )
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -870,12 +924,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
       {(loadingStates.schedule ||
         loadingStates.callRequest ||
         loadingStates.ai) && (
-          <div className="fcw fcw-typing-row">
-            <div className="fcw fcw-bubble bot">
-              <TypingAnimation mode="dots" />
-            </div>
+        <div className="fcw fcw-typing-row">
+          <div className="fcw fcw-bubble bot">
+            <TypingAnimation mode="dots" />
           </div>
-        )}
+        </div>
+      )}
       {isGeneratingImage && !loadingStates.roomGeneration && (
         <div className="fcw fcw-typing-row">
           <div className="fcw fcw-bubble bot">

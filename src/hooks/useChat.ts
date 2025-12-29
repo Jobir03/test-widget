@@ -58,13 +58,13 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
     timestamp: new Date(m.createdAt),
     user: m.widgetUser
       ? {
-        id: m.widgetUser.id,
-        name:
-          [m.widgetUser.firstName, m.widgetUser.lastName]
-            .filter(Boolean)
-            .join(" ") || undefined,
-        email: m.widgetUser.email || undefined,
-      }
+          id: m.widgetUser.id,
+          name:
+            [m.widgetUser.firstName, m.widgetUser.lastName]
+              .filter(Boolean)
+              .join(" ") || undefined,
+          email: m.widgetUser.email || undefined,
+        }
       : undefined,
     type: m.type,
     description: m.description ?? null, // Legacy support
@@ -98,17 +98,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       const response = await apiRef.current.get<
         | PaginatedResponse<ServerMessage>
         | {
-          data: ServerMessage[];
-          total?: number;
-          page?: number;
-          totalPages?: number;
-          meta?: {
-            total: number;
-            perPage: number;
-            currentPage: number;
-            totalPages: number;
-          };
-        }
+            data: ServerMessage[];
+            total?: number;
+            page?: number;
+            totalPages?: number;
+            meta?: {
+              total: number;
+              perPage: number;
+              currentPage: number;
+              totalPages: number;
+            };
+          }
       >("/messages", { params: { page: 1, limit: 30 } });
 
       // Handle both response formats
@@ -187,17 +187,17 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
       const response = await apiRef.current.get<
         | PaginatedResponse<ServerMessage>
         | {
-          data: ServerMessage[];
-          total?: number;
-          page?: number;
-          totalPages?: number;
-          meta?: {
-            total: number;
-            perPage: number;
-            currentPage: number;
-            totalPages: number;
-          };
-        }
+            data: ServerMessage[];
+            total?: number;
+            page?: number;
+            totalPages?: number;
+            meta?: {
+              total: number;
+              perPage: number;
+              currentPage: number;
+              totalPages: number;
+            };
+          }
       >("/messages", { params: { page: nextPage, limit: 30 } });
 
       // Handle both response formats
@@ -306,10 +306,6 @@ export function useChat(apiBase: string, socketUrl: string, widgetKey: string) {
         // 1. We're currently loading (user just sent a message)
         // 2. There are messages waiting for TTS
         // 3. Processing is still active
-
-
-
-
 
         // Only stop loading if we're not currently loading and no messages waiting and not processing
         setLoadingStates((prev) => ({

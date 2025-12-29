@@ -274,8 +274,11 @@ export const createChatService = (widgetKey: string) => {
       }) => {
         // Handle aiProcess event - display information as bot message
         if (data?.information) {
+          // Use a stable ID based on information content to prevent duplicates
+          // This ensures the same information doesn't create multiple messages
+          const messageId = `aiProcess-${data.information.slice(0, 50).replace(/\s/g, '-')}`;
           const aiProcessMessage: ChatMessage = {
-            id: `aiProcess-${Date.now()}`,
+            id: messageId,
             from: "bot",
             text: data.information,
             images: [],
